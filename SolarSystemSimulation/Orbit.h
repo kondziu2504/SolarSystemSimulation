@@ -16,5 +16,6 @@ public:
 	Point3 GetOrbitColor();
 	float GetPeriod();
 	std::vector<Point3> GetPointsOnOrbit();
+	void Draw();
 };
 

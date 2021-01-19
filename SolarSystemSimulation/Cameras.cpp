@@ -41,4 +41,6 @@ void TargetCamera::AppendElevation(float deltaElevation)
 void TargetCamera::AppendRadius(float deltaRadius)
 {
 	radius += deltaRadius;
+	if (radius < 0)
+		radius = 0;
 }

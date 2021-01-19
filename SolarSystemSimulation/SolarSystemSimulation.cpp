@@ -32,19 +32,9 @@ const Point3 CYAN{ 0, 1, 1 };
 unsigned int textures[9];
 LightSource * light1;
 float orbitsScale = 3;
-vector<Planet> planets
-{
-    Planet(0.2, 1, Orbit(1.1, 2 * orbitsScale, 5, Point3{1,3,2}, RED)),  //mercury
-    Planet(0.3, 2, Orbit(1.02, 3 * orbitsScale, 10, Point3{6,5,-1}, GREEN)),    //wenus
-    Planet(0.4, 3, Orbit(1.04, 5 * orbitsScale, 20,  Point3{0,-3,0}, WHITE)),    //ziemia
-    Planet(0.5, 4, Orbit(1.03, 7 * orbitsScale, 40, Point3{4,0,1}, BLUE)),    //Mars
-    Planet(0.6, 5, Orbit(1.04, 9 * orbitsScale, 80,  Point3{-5,2,0}, YELLOW)),    //Jowisz
-    Planet(0.7, 6, Orbit(1.05, 11 * orbitsScale, 160, Point3{1,0,-3}, VIOLET)),    //Saturn
-    Planet(0.8, 7, Orbit(1.05, 13 * orbitsScale, 320,  Point3{0,1,0}, CYAN)),    //Uran
-    Planet(0.9, 8, Orbit(1.02, 15 * orbitsScale, 640,  Point3{-3,-2,2}, ORANGE))    //Neptun
-}; 
+vector<Planet> planets;
 
-GLUquadric* sphere;
+
 
 GLbyte* LoadTGAImage(const char* FileName, GLint* ImWidth, GLint* ImHeight, GLint* ImComponents, GLenum* ImFormat)
 {
@@ -267,7 +257,7 @@ float sunRadius = 2;
 
 void DrawSun()
 {
-    glLoadIdentity();
+    /*glLoadIdentity();
     LookWithCamera(mainCamera);
 
     glDisable(GL_LIGHTING);
@@ -278,67 +268,35 @@ void DrawSun()
     gluQuadricNormals(sphere, GLU_SMOOTH);
     gluSphere(sphere, sunRadius, 32, 16);
 
-    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHTING);*/
 }
 
 void DrawPlanet(Planet planet)
 {
-    Point3 position = planet.GetPointOnOrbit(time);
-
-    glLoadIdentity();
-
-    LookWithCamera(mainCamera);
-    UpdateLight();
-    glTranslatef(position.x, position.y, position.z);
-
-    glBindTexture(GL_TEXTURE_2D, textures[planet.GetTexIndex()]);
-    gluQuadricDrawStyle(sphere, GLU_FILL);
-    gluQuadricTexture(sphere, GL_TRUE);
-    gluQuadricNormals(sphere, GLU_SMOOTH);
-    gluSphere(sphere, planet.GetRadius(), 32, 16);
-
-    vector<Point3> orbitPoints = planet.GetPointsOnOrbit();
-    glLoadIdentity();
-    LookWithCamera(mainCamera);
     
-    glDisable(GL_TEXTURE_2D);
-    glDisable(GL_LIGHTING);
-    Point3 color = planet.GetOrbitColor();
-    float colorIntensity = 0.5f;
-    glColor3f(color.x * colorIntensity, color.y * colorIntensity, color.z * colorIntensity);
-    glBegin(GL_LINE_LOOP);
-    for (Point3 & point : orbitPoints)
-    {    
-        glVertex3f(point.x, point.y, point.z);
-    }
-    glEnd();
-    glEnable(GL_LIGHTING);
-    glEnable(GL_TEXTURE_2D);
 }
 
+bool updateTime = true;
 
 // Funkcja okreœlaj¹ca co ma byæ rysowane (zawsze wywo³ywana, gdy trzeba
 // przerysowaæ scenê)
 void RenderScene(void)
 {
-    time += 0.01;
+    if(updateTime)
+        time += 0.01;
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glLoadIdentity();
-
-
 
     glLoadIdentity();
     LookWithCamera(mainCamera);
     Axes();
 
-    DrawSun();
+
+
+    //DrawSun();
 
     for (Planet planet : planets)
-    {
-        DrawPlanet(planet);
-    }
-
+        planet.Draw(time);
 
 
     glFlush();
@@ -351,9 +309,12 @@ void RenderScene(void)
 
 
 
+
 //Funkcja zwrotna zmieniaj¹ca aktualnie wyœwietlane zadanie
 void keys(unsigned char key, int x, int y)
 {
+    if (key == ' ')
+        updateTime = !updateTime;
 
     glutPostRedisplay();     // przerysowanie obrazu sceny
 }
@@ -408,6 +369,18 @@ void MyInit(void)
     InitializeLighting();
     InitializeTexturing();
 
+    planets = 
+    {
+        Planet(0.2, textures[1], Orbit(1.1, 2 * orbitsScale, 5, Point3{ 1,3,2 }, RED)),  //mercury
+        Planet(0.3, textures[2], Orbit(1.02, 3 * orbitsScale, 10, Point3{ 6,5,-1 }, GREEN)),    //wenus
+        Planet(0.4, textures[3], Orbit(1.04, 5 * orbitsScale, 20, Point3{ 0,-3,0 }, WHITE)),    //ziemia
+        Planet(0.5, textures[4], Orbit(1.03, 7 * orbitsScale, 40, Point3{ 4,0,1 }, BLUE)),    //Mars
+        Planet(0.6, textures[5], Orbit(1.04, 9 * orbitsScale, 80, Point3{ -5,2,0 }, YELLOW)),    //Jowisz
+        Planet(0.7, textures[6], Orbit(1.05, 11 * orbitsScale, 160, Point3{ 1,0,-3 }, VIOLET)),    //Saturn
+        Planet(0.8, textures[7], Orbit(1.05, 13 * orbitsScale, 320, Point3{ 0,1,0 }, CYAN)),    //Uran
+        Planet(0.9, textures[8], Orbit(1.02, 15 * orbitsScale, 640, Point3{ -3,-2,2 }, ORANGE))    //Neptun
+    };
+
     string filenames[]
     { 
         "sun.tga",
@@ -424,7 +397,6 @@ void MyInit(void)
     for (int i = 0; i < 9; i++)
         LoadTextureAtInd(filenames[i], i);
 
-    sphere = gluNewQuadric();
 }
 
 

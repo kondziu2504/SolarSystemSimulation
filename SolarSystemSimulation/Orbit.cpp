@@ -1,6 +1,9 @@
 #include "Orbit.h"
 #define _USE_MATH_DEFINES
 #include <math.h>
+#include <windows.h>
+#include <gl/gl.h>
+#include <gl/glut.h>
 #include "glm-master/glm/mat4x4.hpp"
 #include "glm-master/glm/vec4.hpp"
 #include "glm-master/glm/vec3.hpp"
@@ -66,4 +69,23 @@ std::vector<Point3> Orbit::GetPointsOnOrbit()
         orbitPoints.push_back(GetPointOnOrbit((float)i / resolution * period));
     }
     return orbitPoints;
+}
+
+void Orbit::Draw()
+{
+    std::vector<Point3> orbitPoints = GetPointsOnOrbit();
+
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_LIGHTING);
+    Point3 color = GetOrbitColor();
+    float colorIntensity = 0.5f;
+    glColor3f(color.x * colorIntensity, color.y * colorIntensity, color.z * colorIntensity);
+    glBegin(GL_LINE_LOOP);
+    for (Point3& point : orbitPoints)
+    {
+        glVertex3f(point.x, point.y, point.z);
+    }
+    glEnd();
+    glEnable(GL_LIGHTING);
+    glEnable(GL_TEXTURE_2D);
 }
