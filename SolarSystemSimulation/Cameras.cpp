@@ -4,11 +4,19 @@
 #include <windows.h>
 #include <gl/gl.h>
 #include <gl/glut.h>
+#include "OpenGLCallbackFunctions.h"
+#include "Point.h"
+
+const float CAMERA_MOVE_SENSITIVITY = 1000;
+const float CAMERA_ZOOM_SENSITIVITY = 30;
 
 TargetCamera::TargetCamera(float radius, float minRadius)
 {
 	this->radius = radius;
 	this->minRadius = minRadius;
+	
+	localVelocity = Point3{ 0,0,0 };
+	cameraDamping = 10;
 	target = Point3{ 0,0,0 };
 
 	azimuth = 0;
@@ -67,4 +75,24 @@ void TargetCamera::UseView()
 		target.x, target.y, target.z,
 		0, 1, 0
 	);
+}
+
+void TargetCamera::Update(float deltaTime)
+{
+	AppendAzimuth(localVelocity.x * deltaTime);
+	AppendElevation(localVelocity.y * deltaTime);
+	AppendRadius(-localVelocity.z * deltaTime);
+
+	if (status == 1) {
+		localVelocity.x = delta_x * deltaTime * CAMERA_MOVE_SENSITIVITY;
+		localVelocity.y = delta_y * deltaTime * CAMERA_MOVE_SENSITIVITY;
+	}
+	else if (status == 2)
+	{
+		localVelocity.z += delta_y * deltaTime * CAMERA_ZOOM_SENSITIVITY;
+	}
+
+	localVelocity.x *= (1 / (1 + cameraDamping * deltaTime));
+	localVelocity.y *= (1 / (1 + cameraDamping * deltaTime));
+	localVelocity.z *= (1 / (1 + cameraDamping * deltaTime));
 }

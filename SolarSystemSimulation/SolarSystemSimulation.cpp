@@ -19,6 +19,7 @@
 #include "OpenGLCallbackFunctions.h"
 #include "TGAReading.h"
 #include <chrono>
+#include "ViewParameters.h"
 
 using namespace std;
 
@@ -31,40 +32,46 @@ const Point3 ORANGE{ 1, 0.5, 0 };
 const Point3 WHITE{ 1, 1, 1 };
 const Point3 CYAN{ 0, 1, 1 };
 
+//Parametry do modyfikacji
+const float TIME_SCALE = 1;
+const float ORBITS_SCALE = 6;
+const float PLANETS_SCALE = 1;
+const float SUN_RADIUS = 4;
+const float SKYBOX_RADIUS = 500;
+const float SUN_ROTATION_PERIOD = 150;
+//---------------------------
+
+
+vector<Planet> planets;
+
+unsigned int skyboxTextureInd;
+GLUquadric* skyboxSphere;
+
+LightSource* light1;
+unsigned int sunTextureInd;
+GLUquadric* sunSphere;
+
+float currentTime;
+bool updateTime = true;
+
+bool audioPlaying = false;
+const LPCWSTR AUDIO_FILENAME = L"spaceAmbient.wav";
+
+
+
 const string INSTRUCTION =
 "Klawisze 1-8 przelaczaja kamere miedzy planetami w kolejnosci od Merkurego\n"
 "Klawisz 0 przelacza kamere na slonce\n"
 "Poruszaj mysza z wcisnietym LPM, aby zmieniac pozycje kamery wokol obiektu\n"
 "Poruszaj mysza z wcisnietym PPM, aby przyblizac/oddalac kamere\n"
-"Nacisnij spacje, aby wstrzymac/wznowic symulacje\n";
+"Nacisnij spacje, aby wstrzymac/wznowic symulacje\n"
+"Nacisnij 'm', aby wlaczyc/wylaczyc muzyke\n";
 
-float timeScale = 1;
-
-float orbitsScale = 6;
-vector<Planet> planets;
-
-unsigned int skyboxTextureInd;
-GLUquadric* skyboxSphere;
-float skyboxRadius = 390;
-
-LightSource* light1;
-unsigned int sunTextureInd;
-GLUquadric* sunSphere;
-float sunRadius = 4;
-float sunRotationPeriod = 150;
-
-float currentTime;
-bool updateTime = true;
-
-float cameraMovementY;
-float cameraMovementX;
-float cameraDamping = 10.f;
-float cameraZoom;
 
 //// Funkcja rysuj¹ca osie uk³adu wspó?rz?dnych
 void Axes(void)
 {
-    float axisLength = 100;
+    float axisLength = SKYBOX_RADIUS;
 
     glDisable(GL_LIGHTING);
     glDisable(GL_TEXTURE_2D);
@@ -92,19 +99,6 @@ void Axes(void)
 TargetCamera* currentCamera;
 TargetCamera* sunCamera;
 TargetCamera** planetCameras;
-
-void CameraMotion(GLsizei x, GLsizei y)
-{
-    /*if (status == 1)
-    {
-        currentCamera->AppendAzimuth(delta_x);
-        currentCamera->AppendElevation(delta_y);
-    }
-    if (status == 2)
-    {
-        currentCamera->AppendRadius(-delta_y * 0.25);
-    }*/
-}
 
 void UpdateLight()
 {
@@ -159,8 +153,8 @@ void DrawSun(float time)
     glColor3f(1, 1, 1);
     glBindTexture(GL_TEXTURE_2D, sunTextureInd);
     glDisable(GL_LIGHTING);
-    glRotatef(time / sunRotationPeriod * 360, 0, 1, 0);
-    gluSphere(sunSphere, sunRadius, 32, 16);
+    glRotatef(time / SUN_ROTATION_PERIOD * 360, 0, 1, 0);
+    gluSphere(sunSphere, SUN_RADIUS, 32, 16);
     glEnable(GL_LIGHTING);
 
     glPopMatrix();
@@ -179,13 +173,20 @@ void DrawSkybox()
     glCullFace(GL_FRONT);
     glTranslatef(cameraPosition.x, cameraPosition.y, cameraPosition.z);
     glRotatef(90, 1, 0, 0);
-    gluSphere(skyboxSphere, skyboxRadius, 32, 16);
+    gluSphere(skyboxSphere, SKYBOX_RADIUS, 32, 16);
     glCullFace(GL_BACK);
     glEnable(GL_LIGHTING);
 
     glPopMatrix();
 }
 
+void MouseMotionCorrection()
+{
+    if (delta_x >= -8 && delta_x <= 8)
+        delta_x /= 2;
+    if (delta_y >= -8 && delta_y <= 8)
+        delta_y /= 2;
+}
 
 std::chrono::steady_clock::time_point frameStart;
 std::chrono::steady_clock::time_point frameEnd;
@@ -198,24 +199,9 @@ void RenderScene(void)
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    currentCamera->AppendAzimuth(cameraMovementX * deltaTime);
-    currentCamera->AppendElevation(cameraMovementY * deltaTime);
-    currentCamera->AppendRadius(-cameraZoom * deltaTime * 0.25);
+    currentCamera->Update(deltaTime);
 
-    if (status == 1) {
-        cameraMovementX = delta_x * deltaTime * 500;
-        cameraMovementY = delta_y * deltaTime * 500;
-    }
-    else if (status == 2)
-    {
-        cameraZoom += delta_y * deltaTime * 400 * 0.25;
-    }
-
-    cameraMovementX *= (1 / (1 + cameraDamping * deltaTime));
-    cameraMovementY *= (1 / (1 + cameraDamping * deltaTime));
-    cameraZoom *= (1 / (1 + cameraDamping * deltaTime));
-
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < planets.size(); i++)
         planetCameras[i]->UpdateTarget(planets[i].GetPointOnOrbit(currentTime));
 
     glLoadIdentity();
@@ -229,10 +215,7 @@ void RenderScene(void)
     for (Planet planet : planets)
         planet.Draw(currentTime);
 
-    if (delta_x >= -2 && delta_x <= 2)
-        delta_x /= 2;
-    if (delta_y >= -2 && delta_y <= 2)
-        delta_y /= 2;
+    MouseMotionCorrection();
 
     glFlush(); // Przekazanie poleceñ rysuj¹cych do wykonania
     glutSwapBuffers();
@@ -241,7 +224,7 @@ void RenderScene(void)
     frameEnd = std::chrono::steady_clock::now();
     if (updateTime)
     {
-        deltaTime = timeScale * 0.001 * std::chrono::duration_cast<std::chrono::milliseconds>(frameEnd - frameStart).count();
+        deltaTime = TIME_SCALE * 0.001 * std::chrono::duration_cast<std::chrono::milliseconds>(frameEnd - frameStart).count();
         currentTime += deltaTime;
     }
 }
@@ -281,21 +264,24 @@ void InitializeLighting()
 
 void InitializePlanets()
 {
-    unsigned int textures[8];
-    glGenTextures(8, textures);
+    const int planetsCount = 8;
+
+    unsigned int textures[planetsCount];
+    glGenTextures(planetsCount, textures);
+
     planets =
     {
-        Planet(0.2, 3, textures[0], Orbit(1.1, 2 * orbitsScale, 5, Point3{ 1,3,2 }, RED)),  //mercury
-        Planet(0.3, 7, textures[1], Orbit(1.02, 3 * orbitsScale, 10, Point3{ 6,5,-1 }, GREEN)),    //wenus
-        Planet(0.4, 4, textures[2], Orbit(1.04, 5 * orbitsScale, 20, Point3{ 0,-3,0 }, WHITE)),    //ziemia
-        Planet(0.5, 5, textures[3], Orbit(1.03, 7 * orbitsScale, 40, Point3{ 4,0,1 }, BLUE)),    //Mars
-        Planet(0.6, 9, textures[4], Orbit(1.04, 9 * orbitsScale, 80, Point3{ -5,2,0 }, YELLOW)),    //Jowisz
-        Planet(0.7, 4, textures[5], Orbit(1.05, 11 * orbitsScale, 160, Point3{ 1,0,-3 }, VIOLET)),    //Saturn
-        Planet(0.8, 10, textures[6], Orbit(1.05, 13 * orbitsScale, 320, Point3{ 0,1,0 }, CYAN)),    //Uran
-        Planet(0.9, 11, textures[7], Orbit(1.02, 15 * orbitsScale, 640, Point3{ -3,-2,2 }, ORANGE))    //Neptun
+        Planet(0.2 * PLANETS_SCALE, 3, textures[0], Orbit(1.1, 2 * ORBITS_SCALE, 5, Point3{ 1,3,2 }, RED)),  //mercury
+        Planet(0.3 * PLANETS_SCALE, 7, textures[1], Orbit(1.02, 3 * ORBITS_SCALE, 10, Point3{ 6,5,-1 }, GREEN)),    //wenus
+        Planet(0.4 * PLANETS_SCALE, 4, textures[2], Orbit(1.04, 5 * ORBITS_SCALE, 20, Point3{ 0,-3,0 }, WHITE)),    //ziemia
+        Planet(0.5 * PLANETS_SCALE, 5, textures[3], Orbit(1.03, 7 * ORBITS_SCALE, 40, Point3{ 4,0,1 }, BLUE)),    //Mars
+        Planet(0.6 * PLANETS_SCALE, 9, textures[4], Orbit(1.04, 9 * ORBITS_SCALE, 80, Point3{ -5,2,0 }, YELLOW)),    //Jowisz
+        Planet(0.7 * PLANETS_SCALE, 4, textures[5], Orbit(1.05, 11 * ORBITS_SCALE, 160, Point3{ 1,0,-3 }, VIOLET)),    //Saturn
+        Planet(0.8 * PLANETS_SCALE, 10, textures[6], Orbit(1.05, 13 * ORBITS_SCALE, 320, Point3{ 0,1,0 }, CYAN)),    //Uran
+        Planet(0.9 * PLANETS_SCALE, 11, textures[7], Orbit(1.02, 15 * ORBITS_SCALE, 640, Point3{ -3,-2,2 }, ORANGE))    //Neptun
     };
 
-    string filenames[]
+    string textureFilenames[planetsCount]
     {
         "mercury.tga",
         "venus.tga",
@@ -307,24 +293,43 @@ void InitializePlanets()
         "neptune.tga"
     };
 
-    for (int i = 0; i < 8; i++)
-        LoadTextureAtInd(filenames[i], textures[i]);
+    for (int i = 0; i < planetsCount; i++)
+        LoadTextureAtInd(textureFilenames[i], textures[i]);
 }
 
 void KeysCameras(unsigned char key, int x, int y)
 {
     if (key == '0')
         currentCamera = sunCamera;
-    else if (key >= '1' && key <= '8')
-        currentCamera = planetCameras[key - '0' - 1];
+    else if (key >= '1' && key <= '9')
+    {
+        int index = key - '0' - 1;
+        if(index < planets.size())
+            currentCamera = planetCameras[key - '0' - 1];
+    }
+}
+
+void KeysToggleAudio(unsigned char key, int x, int y)
+{
+    if (key == 'm')
+    {
+        if (audioPlaying)
+        {
+            PlaySound(NULL, NULL, SND_ASYNC);
+        }
+        else
+            PlaySound(AUDIO_FILENAME, NULL, SND_ASYNC | SND_FILENAME | SND_LOOP);
+
+        audioPlaying = !audioPlaying;
+    }    
 }
 
 void InitializeCameras()
 {
     float cameraGap = 0.7;
-    sunCamera = new TargetCamera(15, sunRadius + cameraGap);
-    planetCameras = new TargetCamera * [8];
-    for (int i = 0; i < 8; i++)
+    sunCamera = new TargetCamera(15, SUN_RADIUS + cameraGap);
+    planetCameras = new TargetCamera * [planets.size()];
+    for (int i = 0; i < planets.size(); i++)
         planetCameras[i] = new TargetCamera(planets[i].GetRadius() + 5, planets[i].GetRadius() + cameraGap);
 
     currentCamera = sunCamera;
@@ -333,6 +338,8 @@ void InitializeCameras()
 // Funkcja ustalaj¹ca stan renderowania
 void MyInit(void)
 {
+    zFar = SKYBOX_RADIUS;
+
     InitializeLighting();
     InitializeTexturing();
 
@@ -341,9 +348,9 @@ void MyInit(void)
     InitializePlanets();
     InitializeCameras();
 
-    MotionCallbacks.push_back(&CameraMotion);
     KeysCallbacks.push_back(&ToggleTimeUpdate);
     KeysCallbacks.push_back(&KeysCameras);
+    KeysCallbacks.push_back(&KeysToggleAudio);
 }
 
 
@@ -376,8 +383,7 @@ void main(void)
     glHint(GL_LINE_SMOOTH, GL_NICEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    LPCWSTR audioFilename = L"spaceAmbient.wav";
-    PlaySound(audioFilename, NULL, SND_ASYNC | SND_FILENAME | SND_LOOP);
+
     glutMainLoop();
 }
 

@@ -7,6 +7,8 @@ class TargetCamera
 	float minRadius;
 	float elevation, azimuth;
 	Point3 target;
+	Point3 localVelocity;
+	float cameraDamping;
 	
 public:
 	TargetCamera(float radius, float minRadius);
@@ -16,5 +18,6 @@ public:
 	void AppendRadius(float deltaRadius);
 	void UpdateTarget(Point3 target);
 	void UseView();
+	void Update(float deltaTime);
 };
 

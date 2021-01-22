@@ -149,6 +149,7 @@
     <ClCompile Include="SolarSystemSimulation.cpp" />
     <ClCompile Include="Sun.cpp" />
     <ClCompile Include="TGAReading.cpp" />
+    <ClCompile Include="ViewParameters.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Cameras.h" />
@@ -160,6 +161,7 @@
     <ClInclude Include="Planet.h" />
     <ClInclude Include="Point.h" />
     <ClInclude Include="Sun.h" />
+    <ClInclude Include="ViewParameters.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -4,6 +4,7 @@
 #include <gl/gl.h>
 #include <gl/glut.h>
 
+extern std::vector<void (*)(GLsizei, GLsizei)> BeforeChangeSizeCallbacks;
 extern std::vector<void (*)(GLsizei, GLsizei)> MotionCallbacks;
 extern std::vector<void (*)(unsigned char key, int x, int y)> KeysCallbacks;
 

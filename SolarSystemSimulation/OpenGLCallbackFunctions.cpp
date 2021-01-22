@@ -1,5 +1,6 @@
 #pragma once
 #include "OpenGLCallbackFunctions.h"
+#include "ViewParameters.h"
 
 std::vector<void (*)(GLsizei, GLsizei)> MotionCallbacks;
 std::vector<void (*)(unsigned char key, int x, int y)> KeysCallbacks;
@@ -89,15 +90,8 @@ void ChangeSize(GLsizei horizontal, GLsizei vertical)
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
 
-    gluPerspective(70, 1.0, 0.2, 400.0);
-    // Ustawienie parametrów dla rzutu perspektywicznego
-
-    if (horizontal <= vertical)
-        glViewport(-(vertical - horizontal) / 2, 0, vertical, vertical);
-    else
-        glViewport(0, -(horizontal - vertical) / 2, horizontal, horizontal);
-    // Ustawienie wielkoœci okna okna widoku (viewport) w zale¿noœci
-    // relacji pomiêdzy wysokoœci¹ i szerokoœci¹ okna
+    gluPerspective(fovY, (GLdouble)horizontal / vertical, zNear, zFar);
+    glViewport(0, 0, horizontal, vertical);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
