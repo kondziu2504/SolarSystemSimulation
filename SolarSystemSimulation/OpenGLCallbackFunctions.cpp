@@ -37,6 +37,24 @@ void Mouse(int btn, int state, int x, int y)
 // Funkcja zwrotna wywo³ywana przy ruchu mysz¹ i 
 //jednoczesnym naciœniêciu dowolnego przycisku myszy.
 //Zapisuje informacje o stanie myszy w odpowiednich zmiennych globalnych.
+void PassiveMotion(GLsizei x, GLsizei y)
+{
+    delta_x = x - x_pos_old;    // obliczenie ró¿nicy po³o¿enia kursora myszy
+    x_pos_old = x;              // podstawienie bie¿¹cego po³o¿enia jako poprzednie
+    delta_y = y - y_pos_old;    // obliczenie ró¿nicy po³o¿enia kursora myszy
+    y_pos_old = y;              // podstawienie bie¿¹cego po³o¿enia jako poprzednie
+
+    //if (delta_x == 1)
+    //    delta_x = 0;
+    //if (delta_y == 1)
+    //    delta_y = 0;
+
+    for (void (*funcPointer)(GLsizei, GLsizei) : MotionCallbacks)
+    {
+        (*funcPointer)(x, y);
+    }
+}
+
 void Motion(GLsizei x, GLsizei y)
 {
     delta_x = x - x_pos_old;    // obliczenie ró¿nicy po³o¿enia kursora myszy
@@ -83,4 +101,9 @@ void ChangeSize(GLsizei horizontal, GLsizei vertical)
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
+}
+
+void Idle()
+{
+
 }

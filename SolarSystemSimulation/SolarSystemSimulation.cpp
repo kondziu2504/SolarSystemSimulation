@@ -31,12 +31,15 @@ const Point3 ORANGE{ 1, 0.5, 0 };
 const Point3 WHITE{ 1, 1, 1 };
 const Point3 CYAN{ 0, 1, 1 };
 
-//Do zrobienia
-//Kamery
+const string INSTRUCTION =
+"Klawisze 1-8 przelaczaja kamere miedzy planetami w kolejnosci od Merkurego\n"
+"Klawisz 0 przelacza kamere na slonce\n"
+"Poruszaj mysza z wcisnietym LPM, aby zmieniac pozycje kamery wokol obiektu\n"
+"Poruszaj mysza z wcisnietym PPM, aby przyblizac/oddalac kamere\n";
 
 float timeScale = 1;
 
-float orbitsScale = 3;
+float orbitsScale = 6;
 vector<Planet> planets;
 
 unsigned int skyboxTextureInd;
@@ -46,12 +49,16 @@ float skyboxRadius = 390;
 LightSource* light1;
 unsigned int sunTextureInd;
 GLUquadric* sunSphere;
-float sunRadius = 2;
+float sunRadius = 4;
 float sunRotationPeriod = 150;
 
 float currentTime;
 bool updateTime = true;
 
+float cameraMovementY;
+float cameraMovementX;
+float cameraDamping = 10.f;
+float cameraZoom;
 
 //// Funkcja rysuj¹ca osie uk³adu wspó?rz?dnych
 void Axes(void)
@@ -87,7 +94,7 @@ TargetCamera** planetCameras;
 
 void CameraMotion(GLsizei x, GLsizei y)
 {
-    if (status == 1)
+    /*if (status == 1)
     {
         currentCamera->AppendAzimuth(delta_x);
         currentCamera->AppendElevation(delta_y);
@@ -95,7 +102,7 @@ void CameraMotion(GLsizei x, GLsizei y)
     if (status == 2)
     {
         currentCamera->AppendRadius(-delta_y * 0.25);
-    }
+    }*/
 }
 
 void UpdateLight()
@@ -182,11 +189,30 @@ void DrawSkybox()
 std::chrono::steady_clock::time_point frameStart;
 std::chrono::steady_clock::time_point frameEnd;
 
+float deltaTime = 0.01;
+
 void RenderScene(void)
 {
     frameStart = std::chrono::steady_clock::now();
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    currentCamera->AppendAzimuth(cameraMovementX * deltaTime);
+    currentCamera->AppendElevation(cameraMovementY * deltaTime);
+    currentCamera->AppendRadius(-cameraZoom * deltaTime * 0.25);
+
+    if (status == 1) {
+        cameraMovementX = delta_x * deltaTime * 500;
+        cameraMovementY = delta_y * deltaTime * 500;
+    }
+    else if (status == 2)
+    {
+        cameraZoom += delta_y * deltaTime * 400 * 0.25;
+    }
+
+    cameraMovementX *= (1 / (1 + cameraDamping * deltaTime));
+    cameraMovementY *= (1 / (1 + cameraDamping * deltaTime));
+    cameraZoom *= (1 / (1 + cameraDamping * deltaTime));
 
     for (int i = 0; i < 8; i++)
         planetCameras[i]->UpdateTarget(planets[i].GetPointOnOrbit(currentTime));
@@ -202,13 +228,21 @@ void RenderScene(void)
     for (Planet planet : planets)
         planet.Draw(currentTime);
 
+    if (delta_x >= -2 && delta_x <= 2)
+        delta_x /= 2;
+    if (delta_y >= -2 && delta_y <= 2)
+        delta_y /= 2;
+
     glFlush(); // Przekazanie poleceñ rysuj¹cych do wykonania
     glutSwapBuffers();
     glutPostRedisplay();
 
     frameEnd = std::chrono::steady_clock::now();
-    if(updateTime)
-        currentTime += timeScale * 0.001 * std::chrono::duration_cast<std::chrono::milliseconds>(frameEnd - frameStart).count();
+    if (updateTime)
+    {
+        deltaTime = timeScale * 0.001 * std::chrono::duration_cast<std::chrono::milliseconds>(frameEnd - frameStart).count();
+        currentTime += deltaTime;
+    }
 }
 
 
@@ -287,10 +321,10 @@ void KeysCameras(unsigned char key, int x, int y)
 void InitializeCameras()
 {
     float cameraGap = 0.7;
-    sunCamera = new TargetCamera(10, sunRadius + cameraGap);
+    sunCamera = new TargetCamera(15, sunRadius + cameraGap);
     planetCameras = new TargetCamera * [8];
     for (int i = 0; i < 8; i++)
-        planetCameras[i] = new TargetCamera(5, planets[i].GetRadius() + cameraGap);
+        planetCameras[i] = new TargetCamera(planets[i].GetRadius() + 5, planets[i].GetRadius() + cameraGap);
 
     currentCamera = sunCamera;
 }
@@ -312,10 +346,13 @@ void MyInit(void)
 }
 
 
+
 // G³ówny punkt wejœcia programu. Program dzia³a w trybie konsoli
 void main(void)
 {
     srand(time(NULL));
+
+    cout << INSTRUCTION << endl;
 
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
     glutInitWindowSize(600, 600);
@@ -327,6 +364,9 @@ void main(void)
     glutKeyboardFunc(keys);
     glutMouseFunc(Mouse);
     glutMotionFunc(Motion);
+    glutPassiveMotionFunc(PassiveMotion);
+    glutIdleFunc(Idle);
+
     MyInit();
 
     glEnable(GL_DEPTH_TEST);
@@ -335,7 +375,8 @@ void main(void)
     glHint(GL_LINE_SMOOTH, GL_NICEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
+    LPCWSTR audioFilename = L"spaceAmbient.wav";
+    PlaySound(audioFilename, NULL, SND_ASYNC | SND_FILENAME | SND_LOOP);
     glutMainLoop();
 }
 

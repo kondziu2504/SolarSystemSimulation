@@ -13,7 +13,9 @@ extern GLint status;
 extern int delta_x;
 extern int delta_y;
 
+void PassiveMotion(GLsizei x, GLsizei y);
 void Motion(GLsizei x, GLsizei y);
 void Mouse(int btn, int state, int x, int y);
 void keys(unsigned char key, int x, int y);
 void ChangeSize(GLsizei horizontal, GLsizei vertical);
+void Idle();
