@@ -141,15 +141,19 @@
   <ItemGroup>
     <ClCompile Include="Cameras.cpp" />
     <ClCompile Include="LightSource.cpp" />
+    <ClCompile Include="OpenGLCallbackFunctions.cpp" />
     <ClCompile Include="Orbit.cpp" />
     <ClCompile Include="Planet.cpp" />
     <ClCompile Include="SolarSystemSimulation.cpp" />
     <ClCompile Include="Sun.cpp" />
+    <ClCompile Include="TGAReading.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Cameras.h" />
+    <ClInclude Include="TGAReading.h" />
     <ClInclude Include="LightSource.h" />
     <ClInclude Include="MathHelper.h" />
+    <ClInclude Include="OpenGLCallbackFunctions.h" />
     <ClInclude Include="Orbit.h" />
     <ClInclude Include="Planet.h" />
     <ClInclude Include="Point.h" />

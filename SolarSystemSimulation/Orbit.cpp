@@ -77,9 +77,7 @@ void Orbit::Draw()
 
     glDisable(GL_TEXTURE_2D);
     glDisable(GL_LIGHTING);
-    Point3 color = GetOrbitColor();
-    float colorIntensity = 0.5f;
-    glColor3f(color.x * colorIntensity, color.y * colorIntensity, color.z * colorIntensity);
+    glColor4f(orbitColor.x, orbitColor.y, orbitColor.z, 0.5f);
     glBegin(GL_LINE_LOOP);
     for (Point3& point : orbitPoints)
     {

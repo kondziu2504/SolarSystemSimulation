@@ -1,5 +1,4 @@
 #define _USE_MATH_DEFINES
-#define _CRT_SECURE_NO_WARNINGS
 
 #define GL_GLEXT_PROTOTYPES
 #include <iostream>
@@ -17,6 +16,9 @@
 #include "glm-master/glm/vec4.hpp"
 #include "glm-master/glm/vec3.hpp"
 #include "glm-master/glm/gtc/matrix_transform.hpp"
+#include "OpenGLCallbackFunctions.h"
+#include "TGAReading.h"
+#include <chrono>
 
 using namespace std;
 
@@ -29,102 +31,26 @@ const Point3 ORANGE{ 1, 0.5, 0 };
 const Point3 WHITE{ 1, 1, 1 };
 const Point3 CYAN{ 0, 1, 1 };
 
-unsigned int textures[9];
-LightSource * light1;
+//Do zrobienia
+//Kamery
+
+float timeScale = 1;
+
 float orbitsScale = 3;
 vector<Planet> planets;
 
+unsigned int skyboxTextureInd;
+GLUquadric* skyboxSphere;
+float skyboxRadius = 390;
 
+LightSource* light1;
+unsigned int sunTextureInd;
+GLUquadric* sunSphere;
+float sunRadius = 2;
+float sunRotationPeriod = 150;
 
-GLbyte* LoadTGAImage(const char* FileName, GLint* ImWidth, GLint* ImHeight, GLint* ImComponents, GLenum* ImFormat)
-{
-    // Struktura dla nag³ówka pliku  TGA
-    
-#pragma pack(1)           
-    typedef struct
-    {
-        GLbyte    idlength;
-        GLbyte    colormaptype;
-        GLbyte    datatypecode;
-        unsigned short    colormapstart;
-        unsigned short    colormaplength;
-        unsigned char     colormapdepth;
-        unsigned short    x_orgin;
-        unsigned short    y_orgin;
-        unsigned short    width;
-        unsigned short    height;
-        GLbyte    bitsperpixel;
-        GLbyte    descriptor;
-    }TGAHEADER;
-#pragma pack(8)
-
-    FILE* pFile;
-    TGAHEADER tgaHeader;
-    unsigned long lImageSize;
-    short sDepth;
-    GLbyte* pbitsperpixel = NULL;
-
-    // Wartoœci domyœlne zwracane w przypadku b³êdu
-
-    *ImWidth = 0;
-    *ImHeight = 0;
-    *ImFormat = GL_BGR_EXT;
-    *ImComponents = GL_RGB8;
-
-    pFile = fopen(FileName, "rb");
-    if (pFile == NULL)
-        return NULL;
-
-    // Przeczytanie nag³ówka pliku 
-    fread(&tgaHeader, sizeof(TGAHEADER), 1, pFile);
-
-    // Odczytanie szerokoœci, wysokoœci i g³êbi obrazu
-    *ImWidth = tgaHeader.width;
-    *ImHeight = tgaHeader.height;
-    sDepth = tgaHeader.bitsperpixel / 8;
-
-    /*************************************************************************************/
-    // Sprawdzenie, czy g³êbia spe³nia za³o¿one warunki (8, 24, lub 32 bity)
-
-    if (tgaHeader.bitsperpixel != 8 && tgaHeader.bitsperpixel != 24 && tgaHeader.bitsperpixel != 32)
-        return NULL;
-
-    // Obliczenie rozmiaru bufora w pamiêci
-    lImageSize = tgaHeader.width * tgaHeader.height * sDepth;
-
-    // Alokacja pamiêci dla danych obrazu
-    pbitsperpixel = (GLbyte*)malloc(lImageSize * sizeof(GLbyte));
-
-    if (pbitsperpixel == NULL)
-        return NULL;
-
-    if (fread(pbitsperpixel, lImageSize, 1, pFile) != 1)
-    {
-        free(pbitsperpixel);
-        return NULL;
-    }
-    
-    // Ustawienie formatu OpenGL
-    switch (sDepth)
-    {
-    case 3:
-        *ImFormat = GL_BGR_EXT;
-        *ImComponents = GL_RGB8;
-        break;
-    case 4:
-        *ImFormat = GL_BGRA_EXT;
-        *ImComponents = GL_RGBA8;
-        break;
-    case 1:
-        *ImFormat = GL_LUMINANCE;
-        *ImComponents = GL_LUMINANCE8;
-        break;
-    };
-
-    fclose(pFile);
-
-    return pbitsperpixel;
-}
+float currentTime;
+bool updateTime = true;
 
 
 //// Funkcja rysuj¹ca osie uk³adu wspó?rz?dnych
@@ -132,116 +58,45 @@ void Axes(void)
 {
     float axisLength = 100;
 
-    Point3 x_min = { -axisLength, 0.0, 0.0 };
-    Point3 x_max = { axisLength, 0.0, 0.0 };
-    // pocz?tek i koniec obrazu osi x
-
-    Point3 y_min = { 0.0, -axisLength, 0.0 };
-    Point3 y_max = { 0.0,  axisLength, 0.0 };
-    // pocz?tek i koniec obrazu osi y
-
-    Point3 z_min = { 0.0, 0.0, -axisLength };
-    Point3 z_max = { 0.0, 0.0,  axisLength };
-    //  pocz?tek i koniec obrazu osi y
-
     glDisable(GL_LIGHTING);
     glDisable(GL_TEXTURE_2D);
 
+    glBegin(GL_LINES);
+
     glColor3f(1.0f, 0.0f, 0.0f);  // kolor rysowania osi - czerwony
-    glBegin(GL_LINES); // rysowanie osi x
-    glVertex3f(x_min.x, x_min.y, x_min.z);
-    glVertex3f(x_max.x, x_max.y, x_max.z);
+    glVertex3f(-axisLength, 0, 0);
+    glVertex3f(axisLength, 0, 0);
 
     glColor3f(0.0f, 1.0f, 0.0f);  // kolor rysowania - zielony
-    glBegin(GL_LINES);  // rysowanie osi y
-
-    glVertex3f(y_min.x, y_min.y, y_min.z);
-    glVertex3f(y_max.x, y_max.y, y_max.z);
-    glEnd();
+    glVertex3f(0, -axisLength, 0);
+    glVertex3f(0, axisLength, 0);
 
     glColor3f(0.0f, 0.0f, 1.0f);  // kolor rysowania - niebieski
-    glBegin(GL_LINES); // rysowanie osi z
+    glVertex3f(0, 0, -axisLength);
+    glVertex3f(0, 0, axisLength);
 
-    glVertex3f(z_min.x, z_min.y, z_min.z);
-    glVertex3f(z_max.x, z_max.y, z_max.z);
     glEnd();
 
     glEnable(GL_LIGHTING);
     glEnable(GL_TEXTURE_2D);
 }
 
-TargetCamera mainCamera(Point3{ 0, 0, -10 }, 10);
+TargetCamera* currentCamera;
+TargetCamera* sunCamera;
+TargetCamera** planetCameras;
 
-void LookWithCamera(TargetCamera camera) 
+void CameraMotion(GLsizei x, GLsizei y)
 {
-    Point3 position = camera.GetPosition();
-  
-    gluLookAt(
-        position.x, position.y, position.z,
-        0, 0, 0,
-        0, 1, 0
-    );
-}
-
-
-
-//Wciœniêty przycisk myszy: 0 - ¿aden, 1 - lewy przycisk myszy, 2 - prawy przycisk myszy
-GLint status = 0;
-
-
-//Zmienne pomocnicze do okreœlenia przesuniêcia myszy
-int x_pos_old = 0;
-int delta_x = 0;
-int y_pos_old = 0;
-int delta_y = 0;
-
-
-// Funkcja zwrotna wywo³ywana przy u¿yciu dowolnego przycisku myszy.
-// Zapisuje informacje o stanie myszy w odpowiednich zmiennych globalnych
-void Mouse(int btn, int state, int x, int y)
-{
-    if (btn == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
-    {
-        //Zapisanie obecnej pozycji myszy, aby póŸniej okreœliæ zmianê pozycji.
-        x_pos_old = x;  // podstawienie bie¿¹cego po³o¿enia jako poprzednie
-        y_pos_old = y;  // podstawienie bie¿¹cego po³o¿enia jako poprzednie
-        status = 1;     //zosta³ wciêniêty lewy przycisk myszy
-    }
-    else if (btn == GLUT_RIGHT_BUTTON && state == GLUT_DOWN)
-    {
-        //Zapisanie obecnej pozycji myszy, aby póŸniej okreœliæ zmianê pozycji.
-        x_pos_old = x;  // podstawienie bie¿¹cego po³o¿enia jako poprzednie
-        y_pos_old = y;  // podstawienie bie¿¹cego po³o¿enia jako poprzednie
-        status = 2;     //zosta³ wciêniêty prawy przycisk myszy
-    }
-    else
-        status = 0;// nie zosta³ wcisniêty ¿aden przycisk
-}
-
-
-// Funkcja zwrotna wywo³ywana przy ruchu mysz¹ i 
-//jednoczesnym naciœniêciu dowolnego przycisku myszy.
-//Zapisuje informacje o stanie myszy w odpowiednich zmiennych globalnych.
-void Motion(GLsizei x, GLsizei y)
-{
-    delta_x = x - x_pos_old;    // obliczenie ró¿nicy po³o¿enia kursora myszy
-    x_pos_old = x;              // podstawienie bie¿¹cego po³o¿enia jako poprzednie
-    delta_y = y - y_pos_old;    // obliczenie ró¿nicy po³o¿enia kursora myszy
-    y_pos_old = y;              // podstawienie bie¿¹cego po³o¿enia jako poprzednie
-
     if (status == 1)
     {
-        mainCamera.AppendAzimuth(delta_x);
-        mainCamera.AppendElevation(delta_y);
+        currentCamera->AppendAzimuth(delta_x);
+        currentCamera->AppendElevation(delta_y);
     }
     if (status == 2)
     {
-        mainCamera.AppendRadius(-delta_y * 0.25);
+        currentCamera->AppendRadius(-delta_y * 0.25);
     }
-
-    glutPostRedisplay();     // przerysowanie obrazu sceny
 }
-
 
 void UpdateLight()
 {
@@ -250,97 +105,123 @@ void UpdateLight()
     delete lightPos;
 }
 
-
-float time;
-
-float sunRadius = 2;
-
-void DrawSun()
-{
-    /*glLoadIdentity();
-    LookWithCamera(mainCamera);
-
-    glDisable(GL_LIGHTING);
-    glColor3f(1, 1, 1);
-    glBindTexture(GL_TEXTURE_2D, textures[0]);
-    gluQuadricDrawStyle(sphere, GLU_FILL);
-    gluQuadricTexture(sphere, GL_TRUE);
-    gluQuadricNormals(sphere, GLU_SMOOTH);
-    gluSphere(sphere, sunRadius, 32, 16);
-
-    glEnable(GL_LIGHTING);*/
-}
-
-void DrawPlanet(Planet planet)
-{
-    
-}
-
-bool updateTime = true;
-
-// Funkcja okreœlaj¹ca co ma byæ rysowane (zawsze wywo³ywana, gdy trzeba
-// przerysowaæ scenê)
-void RenderScene(void)
-{
-    if(updateTime)
-        time += 0.01;
-
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    glLoadIdentity();
-    LookWithCamera(mainCamera);
-    Axes();
-
-
-
-    //DrawSun();
-
-    for (Planet planet : planets)
-        planet.Draw(time);
-
-
-    glFlush();
-    // Przekazanie poleceñ rysuj¹cych do wykonania
-    glutSwapBuffers();
-
-    glutPostRedisplay();
-}
-/*************************************************************************************/
-
-
-
-
-//Funkcja zwrotna zmieniaj¹ca aktualnie wyœwietlane zadanie
-void keys(unsigned char key, int x, int y)
-{
-    if (key == ' ')
-        updateTime = !updateTime;
-
-    glutPostRedisplay();     // przerysowanie obrazu sceny
-}
-
-
-void InitializeTexturing()
-{
-    glEnable(GL_CULL_FACE);  
-    
-    glGenTextures(9, textures);
-    
-    glEnable(GL_TEXTURE_2D);
-}
-
-void LoadTextureAtInd(string filename, int index)
+void LoadTextureAtInd(string filename, int textureIndex)
 {
     GLint ImWidth, ImHeight, ImComponents;
     GLenum ImFormat;
-    GLbyte * pBytes = LoadTGAImage(filename.c_str(), &ImWidth, &ImHeight, &ImComponents, &ImFormat);
-    glBindTexture(GL_TEXTURE_2D, textures[index]);
+    GLbyte* pBytes = LoadTGAImage(filename.c_str(), &ImWidth, &ImHeight, &ImComponents, &ImFormat);
+    glBindTexture(GL_TEXTURE_2D, textureIndex);
     glTexImage2D(GL_TEXTURE_2D, 0, ImComponents, ImWidth, ImHeight, 0, ImFormat, GL_UNSIGNED_BYTE, pBytes);
     free(pBytes);
 
     glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+}
+
+
+void InitializeSun()
+{
+    glGenTextures(1, &sunTextureInd);
+    LoadTextureAtInd("sun.tga", sunTextureInd);
+
+    sunSphere = gluNewQuadric();
+    
+    gluQuadricDrawStyle(sunSphere, GLU_FILL);
+    gluQuadricTexture(sunSphere, GL_TRUE);
+    gluQuadricNormals(sunSphere, GLU_SMOOTH);
+}
+
+void InitializeSkybox()
+{
+    glGenTextures(1, &skyboxTextureInd);
+    LoadTextureAtInd("stars.tga", skyboxTextureInd);
+
+    skyboxSphere = gluNewQuadric();
+
+    gluQuadricDrawStyle(skyboxSphere, GLU_FILL);
+    gluQuadricTexture(skyboxSphere, GL_TRUE);
+    gluQuadricNormals(skyboxSphere, GLU_SMOOTH);
+}
+
+void DrawSun(float time)
+{
+    glPushMatrix();
+
+    glColor3f(1, 1, 1);
+    glBindTexture(GL_TEXTURE_2D, sunTextureInd);
+    glDisable(GL_LIGHTING);
+    glRotatef(time / sunRotationPeriod * 360, 0, 1, 0);
+    gluSphere(sunSphere, sunRadius, 32, 16);
+    glEnable(GL_LIGHTING);
+
+    glPopMatrix();
+}
+
+
+void DrawSkybox()
+{
+    Point3 cameraPosition = currentCamera->GetPosition();
+
+    glPushMatrix();
+
+    glColor3f(1, 1, 1);
+    glBindTexture(GL_TEXTURE_2D, skyboxTextureInd);
+    glDisable(GL_LIGHTING);
+    glCullFace(GL_FRONT);
+    glTranslatef(cameraPosition.x, cameraPosition.y, cameraPosition.z);
+    glRotatef(90, 1, 0, 0);
+    gluSphere(skyboxSphere, skyboxRadius, 32, 16);
+    glCullFace(GL_BACK);
+    glEnable(GL_LIGHTING);
+
+    glPopMatrix();
+}
+
+
+std::chrono::steady_clock::time_point frameStart;
+std::chrono::steady_clock::time_point frameEnd;
+
+void RenderScene(void)
+{
+    frameStart = std::chrono::steady_clock::now();
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    for (int i = 0; i < 8; i++)
+        planetCameras[i]->UpdateTarget(planets[i].GetPointOnOrbit(currentTime));
+
+    glLoadIdentity();
+    currentCamera->UseView();
+    UpdateLight();
+
+    DrawSkybox();
+    Axes();
+    DrawSun(currentTime);
+
+    for (Planet planet : planets)
+        planet.Draw(currentTime);
+
+    glFlush(); // Przekazanie poleceñ rysuj¹cych do wykonania
+    glutSwapBuffers();
+    glutPostRedisplay();
+
+    frameEnd = std::chrono::steady_clock::now();
+    if(updateTime)
+        currentTime += timeScale * 0.001 * std::chrono::duration_cast<std::chrono::milliseconds>(frameEnd - frameStart).count();
+}
+
+
+void ToggleTimeUpdate(unsigned char key, int x, int y)
+{
+    if (key == ' ')
+        updateTime = !updateTime;
+}
+
+void InitializeTexturing()
+{
+    glEnable(GL_CULL_FACE);    
+    glEnable(GL_TEXTURE_2D);
 }
 
 // Ustawienie opcji systemu oœwietlania sceny i inicjalizacja Ÿróde³ œwiat³a
@@ -363,89 +244,82 @@ void InitializeLighting()
     light1->SetPosition(Point4{ 0,0,0,1 });
 }
 
+void InitializePlanets()
+{
+    unsigned int textures[8];
+    glGenTextures(8, textures);
+    planets =
+    {
+        Planet(0.2, 3, textures[0], Orbit(1.1, 2 * orbitsScale, 5, Point3{ 1,3,2 }, RED)),  //mercury
+        Planet(0.3, 7, textures[1], Orbit(1.02, 3 * orbitsScale, 10, Point3{ 6,5,-1 }, GREEN)),    //wenus
+        Planet(0.4, 4, textures[2], Orbit(1.04, 5 * orbitsScale, 20, Point3{ 0,-3,0 }, WHITE)),    //ziemia
+        Planet(0.5, 5, textures[3], Orbit(1.03, 7 * orbitsScale, 40, Point3{ 4,0,1 }, BLUE)),    //Mars
+        Planet(0.6, 9, textures[4], Orbit(1.04, 9 * orbitsScale, 80, Point3{ -5,2,0 }, YELLOW)),    //Jowisz
+        Planet(0.7, 4, textures[5], Orbit(1.05, 11 * orbitsScale, 160, Point3{ 1,0,-3 }, VIOLET)),    //Saturn
+        Planet(0.8, 10, textures[6], Orbit(1.05, 13 * orbitsScale, 320, Point3{ 0,1,0 }, CYAN)),    //Uran
+        Planet(0.9, 11, textures[7], Orbit(1.02, 15 * orbitsScale, 640, Point3{ -3,-2,2 }, ORANGE))    //Neptun
+    };
+
+    string filenames[]
+    {
+        "mercury.tga",
+        "venus.tga",
+        "earth.tga",
+        "mars.tga",
+        "jupiter.tga",
+        "saturn.tga",
+        "uranus.tga",
+        "neptune.tga"
+    };
+
+    for (int i = 0; i < 8; i++)
+        LoadTextureAtInd(filenames[i], textures[i]);
+}
+
+void KeysCameras(unsigned char key, int x, int y)
+{
+    if (key == '0')
+        currentCamera = sunCamera;
+    else if (key >= '1' && key <= '8')
+        currentCamera = planetCameras[key - '0' - 1];
+}
+
+void InitializeCameras()
+{
+    float cameraGap = 0.7;
+    sunCamera = new TargetCamera(10, sunRadius + cameraGap);
+    planetCameras = new TargetCamera * [8];
+    for (int i = 0; i < 8; i++)
+        planetCameras[i] = new TargetCamera(5, planets[i].GetRadius() + cameraGap);
+
+    currentCamera = sunCamera;
+}
+
 // Funkcja ustalaj¹ca stan renderowania
 void MyInit(void)
 {
     InitializeLighting();
     InitializeTexturing();
 
-    planets = 
-    {
-        Planet(0.2, textures[1], Orbit(1.1, 2 * orbitsScale, 5, Point3{ 1,3,2 }, RED)),  //mercury
-        Planet(0.3, textures[2], Orbit(1.02, 3 * orbitsScale, 10, Point3{ 6,5,-1 }, GREEN)),    //wenus
-        Planet(0.4, textures[3], Orbit(1.04, 5 * orbitsScale, 20, Point3{ 0,-3,0 }, WHITE)),    //ziemia
-        Planet(0.5, textures[4], Orbit(1.03, 7 * orbitsScale, 40, Point3{ 4,0,1 }, BLUE)),    //Mars
-        Planet(0.6, textures[5], Orbit(1.04, 9 * orbitsScale, 80, Point3{ -5,2,0 }, YELLOW)),    //Jowisz
-        Planet(0.7, textures[6], Orbit(1.05, 11 * orbitsScale, 160, Point3{ 1,0,-3 }, VIOLET)),    //Saturn
-        Planet(0.8, textures[7], Orbit(1.05, 13 * orbitsScale, 320, Point3{ 0,1,0 }, CYAN)),    //Uran
-        Planet(0.9, textures[8], Orbit(1.02, 15 * orbitsScale, 640, Point3{ -3,-2,2 }, ORANGE))    //Neptun
-    };
+    InitializeSkybox();
+    InitializeSun();
+    InitializePlanets();
+    InitializeCameras();
 
-    string filenames[]
-    { 
-        "sun.tga",
-        "mercury.tga", 
-        "venus.tga",
-        "earth.tga", 
-        "mars.tga", 
-        "jupiter.tga", 
-        "saturn.tga", 
-        "uranus.tga", 
-        "neptune.tga" 
-    };
-    
-    for (int i = 0; i < 9; i++)
-        LoadTextureAtInd(filenames[i], i);
-
+    MotionCallbacks.push_back(&CameraMotion);
+    KeysCallbacks.push_back(&ToggleTimeUpdate);
+    KeysCallbacks.push_back(&KeysCameras);
 }
 
-
-// Funkcja ma za zadanie utrzymanie sta³ych proporcji rysowanych
-// w przypadku zmiany rozmiarów okna.
-// Parametry vertical i horizontal (wysokoœæ i szerokoœæ okna) s¹ 
-// przekazywane do funkcji za ka¿dym razem gdy zmieni siê rozmiar okna.
-void ChangeSize(GLsizei horizontal, GLsizei vertical)
-{
-    glMatrixMode(GL_PROJECTION);
-    // Prze³¹czenie macierzy bie¿¹cej na macierz projekcji
-
-    glLoadIdentity();
-    // Czyszcznie macierzy bie¿¹cej
-
-    gluPerspective(70, 1.0, 1.0, 400.0);
-    // Ustawienie parametrów dla rzutu perspektywicznego
-
-    
-    if (horizontal <= vertical)
-        glViewport(-(vertical - horizontal) / 2, 0, vertical, vertical);
-    else
-        glViewport(0, -(horizontal - vertical) / 2, horizontal, horizontal);
-    // Ustawienie wielkoœci okna okna widoku (viewport) w zale¿noœci
-    // relacji pomiêdzy wysokoœci¹ i szerokoœci¹ okna
-
-    glMatrixMode(GL_MODELVIEW);
-    // Prze³¹czenie macierzy bie¿¹cej na macierz widoku modelu  
-
-    glLoadIdentity();
-    // Czyszczenie macierzy bie¿¹cej
-
-}
-
-
-void Idle()
-{
-
-}
 
 // G³ówny punkt wejœcia programu. Program dzia³a w trybie konsoli
 void main(void)
 {
+    srand(time(NULL));
 
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
     glutInitWindowSize(600, 600);
-
-    glutCreateWindow("Rzutowanie perspektywiczne");
+    glutCreateWindow("Uk³ad s³oneczny");
 
     //Przypisanie funkcji zwrotnych
     glutDisplayFunc(RenderScene);
@@ -453,15 +327,16 @@ void main(void)
     glutKeyboardFunc(keys);
     glutMouseFunc(Mouse);
     glutMotionFunc(Motion);
-    glutIdleFunc(Idle);
     MyInit();
-    // Funkcja MyInit() (zdefiniowana powy¿ej) wykonuje wszelkie
-    // inicjalizacje konieczne  przed przyst¹pieniem do renderowania
+
     glEnable(GL_DEPTH_TEST);
-    // W³¹czenie mechanizmu usuwania niewidocznych elementów sceny
+
+    glEnable(GL_LINE_SMOOTH);
+    glHint(GL_LINE_SMOOTH, GL_NICEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     glutMainLoop();
-    // Funkcja uruchamia szkielet biblioteki GLUT
 }
 
 /*************************************************************************************/

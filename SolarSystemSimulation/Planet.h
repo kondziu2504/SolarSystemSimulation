@@ -10,12 +10,15 @@
 class Planet
 {
 	float radius;
+	float rotationPeriod;
 	int textureIndex;	
 	Orbit orbit;
 	GLUquadric * sphere;
+	float timeOffset;
+
 
 public:
-	Planet(float radius, int textureIndex, Orbit orbit);
+	Planet(float radius, float rotationPeriod, int textureIndex, Orbit orbit);
 	int GetTexIndex();
 
 	Point3 GetPointOnOrbit(float progress);

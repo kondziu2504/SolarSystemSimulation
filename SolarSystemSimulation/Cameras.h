@@ -3,15 +3,18 @@
 
 class TargetCamera
 {
-	Point3 position;
 	float radius;
+	float minRadius;
 	float elevation, azimuth;
-
+	Point3 target;
+	
 public:
-	TargetCamera(Point3 position, float radius);
+	TargetCamera(float radius, float minRadius);
 	Point3 GetPosition();
 	void AppendAzimuth(float deltaAzimuth);
 	void AppendElevation(float deltaElevation);
 	void AppendRadius(float deltaRadius);
+	void UpdateTarget(Point3 target);
+	void UseView();
 };
 
