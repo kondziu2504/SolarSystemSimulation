@@ -35,7 +35,8 @@ const string INSTRUCTION =
 "Klawisze 1-8 przelaczaja kamere miedzy planetami w kolejnosci od Merkurego\n"
 "Klawisz 0 przelacza kamere na slonce\n"
 "Poruszaj mysza z wcisnietym LPM, aby zmieniac pozycje kamery wokol obiektu\n"
-"Poruszaj mysza z wcisnietym PPM, aby przyblizac/oddalac kamere\n";
+"Poruszaj mysza z wcisnietym PPM, aby przyblizac/oddalac kamere\n"
+"Nacisnij spacje, aby wstrzymac/wznowic symulacje\n";
 
 float timeScale = 1;
 
