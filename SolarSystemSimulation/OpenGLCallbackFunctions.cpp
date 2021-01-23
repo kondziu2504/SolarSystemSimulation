@@ -5,7 +5,9 @@
 std::vector<void (*)(GLsizei, GLsizei)> MotionCallbacks;
 std::vector<void (*)(unsigned char key, int x, int y)> KeysCallbacks;
 
+//Stan myszy: 0 - brak wciœniêtych przycisków myszy, 1 - wciœniêty LPM, 2 - wciœniêty PPM
 int status = 0;
+//Przesuniêcie myszy
 int delta_x = 0;
 int delta_y = 0;
 
@@ -14,55 +16,49 @@ int x_pos_old = 0;
 int y_pos_old = 0;
 
 // Funkcja zwrotna wywo³ywana przy u¿yciu dowolnego przycisku myszy.
-// Zapisuje informacje o stanie myszy w odpowiednich zmiennych globalnych
+// Zapisuje informacje o stanie myszy.
 void Mouse(int btn, int state, int x, int y)
 {
     if (btn == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
     {
-        //Zapisanie obecnej pozycji myszy, aby póŸniej okreœliæ zmianê pozycji.
-        x_pos_old = x;  // podstawienie bie¿¹cego po³o¿enia jako poprzednie
-        y_pos_old = y;  // podstawienie bie¿¹cego po³o¿enia jako poprzednie
-        status = 1;     //zosta³ wciêniêty lewy przycisk myszy
+        x_pos_old = x; 
+        y_pos_old = y; 
+        status = 1;
     }
     else if (btn == GLUT_RIGHT_BUTTON && state == GLUT_DOWN)
     {
-        //Zapisanie obecnej pozycji myszy, aby póŸniej okreœliæ zmianê pozycji.
-        x_pos_old = x;  // podstawienie bie¿¹cego po³o¿enia jako poprzednie
-        y_pos_old = y;  // podstawienie bie¿¹cego po³o¿enia jako poprzednie
-        status = 2;     //zosta³ wciêniêty prawy przycisk myszy
+        x_pos_old = x;
+        y_pos_old = y;
+        status = 2;
     }
     else
-        status = 0;// nie zosta³ wcisniêty ¿aden przycisk
+        status = 0;
 }
 
-// Funkcja zwrotna wywo³ywana przy ruchu mysz¹ i 
-//jednoczesnym naciœniêciu dowolnego przycisku myszy.
-//Zapisuje informacje o stanie myszy w odpowiednich zmiennych globalnych.
+//Zapisuje informacje o stanie myszy, gdy nie jest wciœniêty ¿aden przycisk
 void PassiveMotion(GLsizei x, GLsizei y)
 {
-    delta_x = x - x_pos_old;    // obliczenie ró¿nicy po³o¿enia kursora myszy
-    x_pos_old = x;              // podstawienie bie¿¹cego po³o¿enia jako poprzednie
-    delta_y = y - y_pos_old;    // obliczenie ró¿nicy po³o¿enia kursora myszy
-    y_pos_old = y;              // podstawienie bie¿¹cego po³o¿enia jako poprzednie
+    delta_x = x - x_pos_old;
+    x_pos_old = x;
+    delta_y = y - y_pos_old;
+    y_pos_old = y;
 
-    //if (delta_x == 1)
-    //    delta_x = 0;
-    //if (delta_y == 1)
-    //    delta_y = 0;
-
+    //Wywo³anie funkcji zwrotnych zdefiniowanych na zewn¹trz
     for (void (*funcPointer)(GLsizei, GLsizei) : MotionCallbacks)
     {
         (*funcPointer)(x, y);
     }
 }
 
+//Zapisuje informacje o stanie myszy, gdy jest wciœniêty przycisk
 void Motion(GLsizei x, GLsizei y)
 {
-    delta_x = x - x_pos_old;    // obliczenie ró¿nicy po³o¿enia kursora myszy
-    x_pos_old = x;              // podstawienie bie¿¹cego po³o¿enia jako poprzednie
-    delta_y = y - y_pos_old;    // obliczenie ró¿nicy po³o¿enia kursora myszy
-    y_pos_old = y;              // podstawienie bie¿¹cego po³o¿enia jako poprzednie
+    delta_x = x - x_pos_old;
+    x_pos_old = x;
+    delta_y = y - y_pos_old;
+    y_pos_old = y;
 
+     //Wywo³anie funkcji zwrotnych zdefiniowanych na zewn¹trz
     for (void (*funcPointer)(GLsizei, GLsizei) : MotionCallbacks)
     {
         (*funcPointer)(x, y);
@@ -81,10 +77,7 @@ void keys(unsigned char key, int x, int y)
 }
 
 
-// Funkcja ma za zadanie utrzymanie sta³ych proporcji rysowanych
-// w przypadku zmiany rozmiarów okna.
-// Parametry vertical i horizontal (wysokoœæ i szerokoœæ okna) s¹ 
-// przekazywane do funkcji za ka¿dym razem gdy zmieni siê rozmiar okna.
+//Funkcja zwrotna zachowuj¹ca odpowiednie proporcje na ekranie
 void ChangeSize(GLsizei horizontal, GLsizei vertical)
 {
     glMatrixMode(GL_PROJECTION);

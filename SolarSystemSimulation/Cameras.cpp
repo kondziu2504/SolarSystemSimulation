@@ -1,5 +1,6 @@
+#define _USE_MATH_DEFINES
+
 #include "Cameras.h"
-#include "MathHelper.h"
 #include <cmath>
 #include <windows.h>
 #include <gl/gl.h>
@@ -9,6 +10,7 @@
 
 const float CAMERA_MOVE_SENSITIVITY = 1000;
 const float CAMERA_ZOOM_SENSITIVITY = 30;
+const float CAMERA_DAMPING = 10;
 
 TargetCamera::TargetCamera(float radius, float minRadius)
 {
@@ -16,7 +18,6 @@ TargetCamera::TargetCamera(float radius, float minRadius)
 	this->minRadius = minRadius;
 	
 	localVelocity = Point3{ 0,0,0 };
-	cameraDamping = 10;
 	target = Point3{ 0,0,0 };
 
 	azimuth = 0;
@@ -89,10 +90,10 @@ void TargetCamera::Update(float deltaTime)
 	}
 	else if (status == 2)
 	{
-		localVelocity.z += delta_y * deltaTime * CAMERA_ZOOM_SENSITIVITY;
+		localVelocity.z = delta_y * deltaTime * CAMERA_ZOOM_SENSITIVITY;
 	}
 
-	localVelocity.x *= (1 / (1 + cameraDamping * deltaTime));
-	localVelocity.y *= (1 / (1 + cameraDamping * deltaTime));
-	localVelocity.z *= (1 / (1 + cameraDamping * deltaTime));
+	localVelocity.x *= (1 / (1 + CAMERA_DAMPING * deltaTime));
+	localVelocity.y *= (1 / (1 + CAMERA_DAMPING * deltaTime));
+	localVelocity.z *= (1 / (1 + CAMERA_DAMPING * deltaTime));
 }

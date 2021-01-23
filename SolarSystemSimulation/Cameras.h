@@ -8,7 +8,6 @@ class TargetCamera
 	float elevation, azimuth;
 	Point3 target;
 	Point3 localVelocity;
-	float cameraDamping;
 	
 public:
 	TargetCamera(float radius, float minRadius);

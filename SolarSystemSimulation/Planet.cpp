@@ -22,6 +22,9 @@ Planet::Planet(float radius, float rotationPeriod, int textureIndex, Orbit orbit
     glGenTextures(1, &ind);
 
     sphere = gluNewQuadric();
+    gluQuadricDrawStyle(sphere, GLU_FILL);
+    gluQuadricTexture(sphere, GL_TRUE);
+    gluQuadricNormals(sphere, GLU_SMOOTH);
 }
 
 int Planet::GetTexIndex()
@@ -52,30 +55,32 @@ Point3 Planet::GetOrbitColor()
 
 void Planet::Draw(float time)
 {
-    glPushMatrix();
-    glPushMatrix();
+    glPushMatrix(); //Zapisanie pierwotnego stanu
 
     Point3 position = GetPointOnOrbit(time);
 
+#pragma region MyRegion
     float rotationProgress = time;
     while (rotationProgress >= rotationPeriod)
         rotationProgress -= rotationPeriod;
     rotationProgress /= rotationPeriod;
-
+#pragma endregion
+  
     glTranslatef(position.x, position.y, position.z);
+    //Rotacja planety wokó³ osi
     glRotatef(rotationProgress * 360, 0, 1, 0);
+    //Rotacja w celu korekcji tekstury
     glRotatef(90, 1, 0, 0);
 
     glBindTexture(GL_TEXTURE_2D, textureIndex);
-    gluQuadricDrawStyle(sphere, GLU_FILL);
-    gluQuadricTexture(sphere, GL_TRUE);
-    gluQuadricNormals(sphere, GLU_SMOOTH);
     gluSphere(sphere, radius, 32, 16);
 
-    glPopMatrix();
+    glPopMatrix(); //Wczytanie pierwotnego stanu
+
+    glPushMatrix(); //Zapisanie pierwotnego stanu
 
     orbit.Draw();    
 
-    glPopMatrix();
+    glPopMatrix(); //Wczytanie pierwotnego stanu
 }
 

@@ -28,6 +28,11 @@ Orbit::Orbit()
     orbitColor = { 1,1,1 };
 }
 
+//Wyliczanie punktu na orbicie.
+//Punkt wyliczany jest dla elipsy dwuwymiarowej,
+//przekszta³cany na punkt trójwymiarowy, a nastêpnie
+//poddany rotacji, aby odwzorowaæ jego opisane za pomoc¹ k¹tów orbity
+//miejsce w przestrzeni
 Point3 Orbit::GetPointOnOrbit(float progress)
 {
     float c = sqrt(aEllipse * aEllipse - bEllipse * bEllipse);
@@ -60,6 +65,7 @@ float Orbit::GetPeriod()
     return period;
 }
 
+//Generowanie zbioru punktów na orbicie
 std::vector<Point3> Orbit::GetPointsOnOrbit()
 {
     std::vector<Point3> orbitPoints;
@@ -77,13 +83,16 @@ void Orbit::Draw()
 
     glDisable(GL_TEXTURE_2D);
     glDisable(GL_LIGHTING);
+    //Obni¿enie przeŸroczystoœci w celu, aby kolory orbit nie dominowa³y na ekranie
     glColor4f(orbitColor.x, orbitColor.y, orbitColor.z, 0.5f);
+
     glBegin(GL_LINE_LOOP);
     for (Point3& point : orbitPoints)
     {
         glVertex3f(point.x, point.y, point.z);
     }
     glEnd();
+
     glEnable(GL_LIGHTING);
     glEnable(GL_TEXTURE_2D);
 }

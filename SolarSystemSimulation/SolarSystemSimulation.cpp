@@ -32,6 +32,9 @@ const Point3 ORANGE{ 1, 0.5, 0 };
 const Point3 WHITE{ 1, 1, 1 };
 const Point3 CYAN{ 0, 1, 1 };
 
+const string TEXTURES_DIRECTORY = "Tekstury";
+const LPCWSTR AUDIO_PATH = L"Muzyka/spaceAmbient.wav";
+
 //Parametry do modyfikacji
 const float TIME_SCALE = 1;
 const float ORBITS_SCALE = 6;
@@ -44,19 +47,25 @@ const float SUN_ROTATION_PERIOD = 150;
 
 vector<Planet> planets;
 
+//Zmienne do przechowywania informacji na temat skybox'a - gwiazdy w tle
 unsigned int skyboxTextureInd;
 GLUquadric* skyboxSphere;
 
+//ród³o œwiat³a w centrum w ramach symulowania s³oñca
 LightSource* light1;
 unsigned int sunTextureInd;
 GLUquadric* sunSphere;
 
+//Aktualny czas symulacji
 float currentTime;
+//Czy aktualizowaæ czas symulacji
 bool updateTime = true;
 
 bool audioPlaying = false;
-const LPCWSTR AUDIO_FILENAME = L"spaceAmbient.wav";
 
+TargetCamera* currentCamera;
+TargetCamera* sunCamera;
+TargetCamera** planetCameras;
 
 
 const string INSTRUCTION =
@@ -68,7 +77,7 @@ const string INSTRUCTION =
 "Nacisnij 'm', aby wlaczyc/wylaczyc muzyke\n";
 
 
-//// Funkcja rysuj¹ca osie uk³adu wspó?rz?dnych
+//// Funkcja rysuj¹ca osie uk³adu wspó³rzêdnych
 void Axes(void)
 {
     float axisLength = SKYBOX_RADIUS;
@@ -78,15 +87,18 @@ void Axes(void)
 
     glBegin(GL_LINES);
 
-    glColor3f(1.0f, 0.0f, 0.0f);  // kolor rysowania osi - czerwony
+    //Oœ X - czerwona
+    glColor3f(1.0f, 0.0f, 0.0f);
     glVertex3f(-axisLength, 0, 0);
     glVertex3f(axisLength, 0, 0);
 
-    glColor3f(0.0f, 1.0f, 0.0f);  // kolor rysowania - zielony
+    //Oœ Y - zielona
+    glColor3f(0.0f, 1.0f, 0.0f);
     glVertex3f(0, -axisLength, 0);
     glVertex3f(0, axisLength, 0);
 
-    glColor3f(0.0f, 0.0f, 1.0f);  // kolor rysowania - niebieski
+    //Oœ Z - niebieska
+    glColor3f(0.0f, 0.0f, 1.0f);
     glVertex3f(0, 0, -axisLength);
     glVertex3f(0, 0, axisLength);
 
@@ -96,10 +108,7 @@ void Axes(void)
     glEnable(GL_TEXTURE_2D);
 }
 
-TargetCamera* currentCamera;
-TargetCamera* sunCamera;
-TargetCamera** planetCameras;
-
+//Aktualizowania pozycji œwiat³a wzglêdem aktualnej macierzy widoku
 void UpdateLight()
 {
     Point4p lightPos = light1->GetPosition();
@@ -107,6 +116,7 @@ void UpdateLight()
     delete lightPos;
 }
 
+//£adowanie tekstury z pliku do danego slotu
 void LoadTextureAtInd(string filename, int textureIndex)
 {
     GLint ImWidth, ImHeight, ImComponents;
@@ -125,7 +135,7 @@ void LoadTextureAtInd(string filename, int textureIndex)
 void InitializeSun()
 {
     glGenTextures(1, &sunTextureInd);
-    LoadTextureAtInd("sun.tga", sunTextureInd);
+    LoadTextureAtInd(TEXTURES_DIRECTORY + "/" + "sun.tga", sunTextureInd);
 
     sunSphere = gluNewQuadric();
     
@@ -137,10 +147,12 @@ void InitializeSun()
 void InitializeSkybox()
 {
     glGenTextures(1, &skyboxTextureInd);
-    LoadTextureAtInd("stars.tga", skyboxTextureInd);
+    LoadTextureAtInd(TEXTURES_DIRECTORY + "/" + "stars.tga", skyboxTextureInd);
 
     skyboxSphere = gluNewQuadric();
 
+    //Rysowanie wnêtrza, bo kula skybox'a widoczna od œrodka
+    gluQuadricOrientation(skyboxSphere, GLU_INSIDE);
     gluQuadricDrawStyle(skyboxSphere, GLU_FILL);
     gluQuadricTexture(skyboxSphere, GL_TRUE);
     gluQuadricNormals(skyboxSphere, GLU_SMOOTH);
@@ -169,17 +181,22 @@ void DrawSkybox()
 
     glColor3f(1, 1, 1);
     glBindTexture(GL_TEXTURE_2D, skyboxTextureInd);
+
     glDisable(GL_LIGHTING);
-    glCullFace(GL_FRONT);
+    
     glTranslatef(cameraPosition.x, cameraPosition.y, cameraPosition.z);
     glRotatef(90, 1, 0, 0);
     gluSphere(skyboxSphere, SKYBOX_RADIUS, 32, 16);
-    glCullFace(GL_BACK);
+    
     glEnable(GL_LIGHTING);
 
     glPopMatrix();
 }
 
+//Korekcja informacji na temat ruchu myszy.
+//Z powodu braku funkcji zwrotnej dla myszy, gdy jest w spoczynku,
+//po jej zatrzymaniu zapamiêtywana by³a informacja o prêdkoœci ostatniego ruchu.
+//Ta funkcja stopniowo redukuje zapamiêtan¹ prêdkoœæ, aby zasymulowaæ zatrzymanie.
 void MouseMotionCorrection()
 {
     if (delta_x >= -8 && delta_x <= 8)
@@ -192,6 +209,7 @@ std::chrono::steady_clock::time_point frameStart;
 std::chrono::steady_clock::time_point frameEnd;
 
 float deltaTime = 0.01;
+float unscaledDeltaTime = 0.01;
 
 void RenderScene(void)
 {
@@ -199,12 +217,15 @@ void RenderScene(void)
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    currentCamera->Update(deltaTime);
+    //Aktualizacja pozycji kamery
+    currentCamera->Update(unscaledDeltaTime);
 
+    //Aktualizacja celów kamer - ka¿da z kamer patrzy na jedn¹ z planet
     for (int i = 0; i < planets.size(); i++)
         planetCameras[i]->UpdateTarget(planets[i].GetPointOnOrbit(currentTime));
 
     glLoadIdentity();
+    //Aktualizacja macierzy widoku na podstawie obecnie wybranej kamery
     currentCamera->UseView();
     UpdateLight();
 
@@ -217,20 +238,22 @@ void RenderScene(void)
 
     MouseMotionCorrection();
 
-    glFlush(); // Przekazanie poleceñ rysuj¹cych do wykonania
+    glFlush();
     glutSwapBuffers();
+    //Zkolejkowanie kolejnego wyœwietlenia sceny, aby zachowaæ aktualnoœæ symulacji na ekranie
     glutPostRedisplay();
 
     frameEnd = std::chrono::steady_clock::now();
     if (updateTime)
     {
-        deltaTime = TIME_SCALE * 0.001 * std::chrono::duration_cast<std::chrono::milliseconds>(frameEnd - frameStart).count();
+        unscaledDeltaTime = 0.001 * std::chrono::duration_cast<std::chrono::milliseconds>(frameEnd - frameStart).count();
+        deltaTime = TIME_SCALE * unscaledDeltaTime;
         currentTime += deltaTime;
     }
 }
 
-
-void ToggleTimeUpdate(unsigned char key, int x, int y)
+//Funkcja zwrotna do wstrzymania/wznowienia symulacji po nacisnieciu klawisza
+void KeysToggleTimeUpdate(unsigned char key, int x, int y)
 {
     if (key == ' ')
         updateTime = !updateTime;
@@ -242,23 +265,23 @@ void InitializeTexturing()
     glEnable(GL_TEXTURE_2D);
 }
 
-// Ustawienie opcji systemu oœwietlania sceny i inicjalizacja Ÿróde³ œwiat³a
 void InitializeLighting()
 {
     glShadeModel(GL_SMOOTH); // w³aczenie ³agodnego cieniowania
     glEnable(GL_LIGHTING);   // w³aczenie systemu oœwietlenia sceny
-    glEnable(GL_DEPTH_TEST); // w³¹czenie mechanizmu z-bufora
 
     float ambient = 3.f;
     float diffuse = 10.f;
     float specular = 5.f;
 
+    //Ustawienie œwiat³a bia³ego dla ¿ród³a œwiat³a w s³oñcu
     light1 = new LightSource(
         Point4{ ambient, ambient, ambient, 1.0 },
         Point4{ diffuse, diffuse, diffuse, 1.0 },
         Point4{ specular, specular, specular, 1.0 });
 
     light1->Enable(true);
+    //Œwiat³o w centrum uk³adu, poniewa¿ na tej pozycji znajduje siê model s³oñca
     light1->SetPosition(Point4{ 0,0,0,1 });
 }
 
@@ -266,37 +289,40 @@ void InitializePlanets()
 {
     const int planetsCount = 8;
 
-    unsigned int textures[planetsCount];
-    glGenTextures(planetsCount, textures);
-
-    planets =
-    {
-        Planet(0.2 * PLANETS_SCALE, 3, textures[0], Orbit(1.1, 2 * ORBITS_SCALE, 5, Point3{ 1,3,2 }, RED)),  //mercury
-        Planet(0.3 * PLANETS_SCALE, 7, textures[1], Orbit(1.02, 3 * ORBITS_SCALE, 10, Point3{ 6,5,-1 }, GREEN)),    //wenus
-        Planet(0.4 * PLANETS_SCALE, 4, textures[2], Orbit(1.04, 5 * ORBITS_SCALE, 20, Point3{ 0,-3,0 }, WHITE)),    //ziemia
-        Planet(0.5 * PLANETS_SCALE, 5, textures[3], Orbit(1.03, 7 * ORBITS_SCALE, 40, Point3{ 4,0,1 }, BLUE)),    //Mars
-        Planet(0.6 * PLANETS_SCALE, 9, textures[4], Orbit(1.04, 9 * ORBITS_SCALE, 80, Point3{ -5,2,0 }, YELLOW)),    //Jowisz
-        Planet(0.7 * PLANETS_SCALE, 4, textures[5], Orbit(1.05, 11 * ORBITS_SCALE, 160, Point3{ 1,0,-3 }, VIOLET)),    //Saturn
-        Planet(0.8 * PLANETS_SCALE, 10, textures[6], Orbit(1.05, 13 * ORBITS_SCALE, 320, Point3{ 0,1,0 }, CYAN)),    //Uran
-        Planet(0.9 * PLANETS_SCALE, 11, textures[7], Orbit(1.02, 15 * ORBITS_SCALE, 640, Point3{ -3,-2,2 }, ORANGE))    //Neptun
-    };
+    unsigned int textureIndices[planetsCount];
+    //Wygenerowanie indeksów, na których przechowywane bêd¹ tekstury
+    glGenTextures(planetsCount, textureIndices);
 
     string textureFilenames[planetsCount]
     {
-        "mercury.tga",
-        "venus.tga",
-        "earth.tga",
-        "mars.tga",
-        "jupiter.tga",
-        "saturn.tga",
-        "uranus.tga",
-        "neptune.tga"
+        TEXTURES_DIRECTORY + "/" + "mercury.tga",
+        TEXTURES_DIRECTORY + "/" + "venus.tga",
+        TEXTURES_DIRECTORY + "/" + "earth.tga",
+        TEXTURES_DIRECTORY + "/" + "mars.tga",
+        TEXTURES_DIRECTORY + "/" + "jupiter.tga",
+        TEXTURES_DIRECTORY + "/" + "saturn.tga",
+        TEXTURES_DIRECTORY + "/" + "uranus.tga",
+        TEXTURES_DIRECTORY + "/" + "neptune.tga"
     };
 
+    //Za³adowanie tekstur
     for (int i = 0; i < planetsCount; i++)
-        LoadTextureAtInd(textureFilenames[i], textures[i]);
+        LoadTextureAtInd(textureFilenames[i], textureIndices[i]);
+
+    planets =
+    {
+        Planet(0.2 * PLANETS_SCALE, 3, textureIndices[0], Orbit(1.1, 2 * ORBITS_SCALE, 5, Point3{ 1,3,2 }, RED)),  //mercury
+        Planet(0.3 * PLANETS_SCALE, 7, textureIndices[1], Orbit(1.02, 3 * ORBITS_SCALE, 10, Point3{ 6,5,-1 }, GREEN)),    //wenus
+        Planet(0.4 * PLANETS_SCALE, 4, textureIndices[2], Orbit(1.04, 5 * ORBITS_SCALE, 20, Point3{ 0,-3,0 }, WHITE)),    //ziemia
+        Planet(0.5 * PLANETS_SCALE, 5, textureIndices[3], Orbit(1.03, 7 * ORBITS_SCALE, 40, Point3{ 4,0,1 }, BLUE)),    //Mars
+        Planet(0.6 * PLANETS_SCALE, 9, textureIndices[4], Orbit(1.04, 9 * ORBITS_SCALE, 80, Point3{ -5,2,0 }, YELLOW)),    //Jowisz
+        Planet(0.7 * PLANETS_SCALE, 4, textureIndices[5], Orbit(1.05, 11 * ORBITS_SCALE, 160, Point3{ 1,0,-3 }, VIOLET)),    //Saturn
+        Planet(0.8 * PLANETS_SCALE, 10, textureIndices[6], Orbit(1.05, 13 * ORBITS_SCALE, 320, Point3{ 0,1,0 }, CYAN)),    //Uran
+        Planet(0.9 * PLANETS_SCALE, 11, textureIndices[7], Orbit(1.02, 15 * ORBITS_SCALE, 640, Point3{ -3,-2,2 }, ORANGE))    //Neptun
+    }; 
 }
 
+//Funkcja zwrotna do wyboru kamery za pomoc¹ klawiszy
 void KeysCameras(unsigned char key, int x, int y)
 {
     if (key == '0')
@@ -309,6 +335,7 @@ void KeysCameras(unsigned char key, int x, int y)
     }
 }
 
+//Funkcja zwrotna do w³¹czania/wy³¹czania muzyki za pomoc¹ klawisza
 void KeysToggleAudio(unsigned char key, int x, int y)
 {
     if (key == 'm')
@@ -318,12 +345,13 @@ void KeysToggleAudio(unsigned char key, int x, int y)
             PlaySound(NULL, NULL, SND_ASYNC);
         }
         else
-            PlaySound(AUDIO_FILENAME, NULL, SND_ASYNC | SND_FILENAME | SND_LOOP);
+            PlaySound(AUDIO_PATH, NULL, SND_ASYNC | SND_FILENAME | SND_LOOP);
 
         audioPlaying = !audioPlaying;
     }    
 }
 
+//Utworzenie kamery dla ka¿dej planety
 void InitializeCameras()
 {
     float cameraGap = 0.7;
@@ -335,8 +363,7 @@ void InitializeCameras()
     currentCamera = sunCamera;
 }
 
-// Funkcja ustalaj¹ca stan renderowania
-void MyInit(void)
+void MyInitialize(void)
 {
     zFar = SKYBOX_RADIUS;
 
@@ -348,12 +375,36 @@ void MyInit(void)
     InitializePlanets();
     InitializeCameras();
 
-    KeysCallbacks.push_back(&ToggleTimeUpdate);
+    KeysCallbacks.push_back(&KeysToggleTimeUpdate);
     KeysCallbacks.push_back(&KeysCameras);
     KeysCallbacks.push_back(&KeysToggleAudio);
 }
 
 
+void InitializeWindowsSizeAndPos()
+{
+    HWND consoleWindow = GetConsoleWindow();
+    HWND desktopWindow = GetDesktopWindow();
+
+    RECT desktopRect;
+    GetWindowRect(desktopWindow, &desktopRect);
+    float screenWidth = desktopRect.right;
+    float screenHeight = desktopRect.bottom;
+
+    RECT windowRect = { screenWidth / 2 + 10, 0, screenWidth, screenHeight / 2 };
+    MoveWindow(consoleWindow, windowRect.left, windowRect.top, windowRect.right - windowRect.left, windowRect.bottom - windowRect.top, TRUE);
+
+
+    glutInitWindowSize(screenWidth / 2, screenHeight / 2);
+}
+
+void InitializeLineAntialiasing()
+{
+    glEnable(GL_LINE_SMOOTH);
+    glHint(GL_LINE_SMOOTH, GL_NICEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+}
 
 // G³ówny punkt wejœcia programu. Program dzia³a w trybie konsoli
 void main(void)
@@ -362,8 +413,8 @@ void main(void)
 
     cout << INSTRUCTION << endl;
 
+    InitializeWindowsSizeAndPos();
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
-    glutInitWindowSize(600, 600);
     glutCreateWindow("Uk³ad s³oneczny");
 
     //Przypisanie funkcji zwrotnych
@@ -375,14 +426,11 @@ void main(void)
     glutPassiveMotionFunc(PassiveMotion);
     glutIdleFunc(Idle);
 
-    MyInit();
+    MyInitialize();
 
     glEnable(GL_DEPTH_TEST);
 
-    glEnable(GL_LINE_SMOOTH);
-    glHint(GL_LINE_SMOOTH, GL_NICEST);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    InitializeLineAntialiasing();
 
     glutMainLoop();
 }
