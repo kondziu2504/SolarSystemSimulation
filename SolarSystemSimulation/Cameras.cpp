@@ -8,9 +8,9 @@
 #include "OpenGLCallbackFunctions.h"
 #include "Point.h"
 
-const float CAMERA_MOVE_SENSITIVITY = 1000;
+const float CAMERA_MOVE_SENSITIVITY = 100;
 const float CAMERA_ZOOM_SENSITIVITY = 30;
-const float CAMERA_DAMPING = 10;
+const float CAMERA_DAMPING = 15;
 
 TargetCamera::TargetCamera(float radius, float minRadius)
 {
@@ -85,12 +85,12 @@ void TargetCamera::Update(float deltaTime)
 	AppendRadius(-localVelocity.z * deltaTime);
 
 	if (status == 1) {
-		localVelocity.x = delta_x * deltaTime * CAMERA_MOVE_SENSITIVITY;
-		localVelocity.y = delta_y * deltaTime * CAMERA_MOVE_SENSITIVITY;
+		localVelocity.x += delta_x * deltaTime * CAMERA_MOVE_SENSITIVITY;
+		localVelocity.y += delta_y * deltaTime * CAMERA_MOVE_SENSITIVITY;
 	}
 	else if (status == 2)
 	{
-		localVelocity.z = delta_y * deltaTime * CAMERA_ZOOM_SENSITIVITY;
+		localVelocity.z += delta_y * deltaTime * CAMERA_ZOOM_SENSITIVITY;
 	}
 
 	localVelocity.x *= (1 / (1 + CAMERA_DAMPING * deltaTime));

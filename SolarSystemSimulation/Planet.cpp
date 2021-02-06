@@ -70,7 +70,7 @@ void Planet::Draw(float time)
     //Rotacja planety wokó³ osi
     glRotatef(rotationProgress * 360, 0, 1, 0);
     //Rotacja w celu korekcji tekstury
-    glRotatef(90, 1, 0, 0);
+    glRotatef(-90, 1, 0, 0);
 
     glBindTexture(GL_TEXTURE_2D, textureIndex);
     gluSphere(sphere, radius, 32, 16);

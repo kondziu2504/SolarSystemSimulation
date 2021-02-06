@@ -17,7 +17,7 @@
 #include "glm-master/glm/vec3.hpp"
 #include "glm-master/glm/gtc/matrix_transform.hpp"
 #include "OpenGLCallbackFunctions.h"
-#include "TGAReading.h"
+#include "PngReading.h"
 #include <chrono>
 #include "ViewParameters.h"
 
@@ -121,7 +121,7 @@ void LoadTextureAtInd(string filename, int textureIndex)
 {
     GLint ImWidth, ImHeight, ImComponents;
     GLenum ImFormat;
-    GLbyte* pBytes = LoadTGAImage(filename.c_str(), &ImWidth, &ImHeight, &ImComponents, &ImFormat);
+    GLbyte* pBytes = (GLbyte*)readPng(filename.c_str(), ImWidth, ImHeight, ImComponents, ImFormat);
     glBindTexture(GL_TEXTURE_2D, textureIndex);
     glTexImage2D(GL_TEXTURE_2D, 0, ImComponents, ImWidth, ImHeight, 0, ImFormat, GL_UNSIGNED_BYTE, pBytes);
     free(pBytes);
@@ -135,7 +135,7 @@ void LoadTextureAtInd(string filename, int textureIndex)
 void InitializeSun()
 {
     glGenTextures(1, &sunTextureInd);
-    LoadTextureAtInd(TEXTURES_DIRECTORY + "/" + "sun.tga", sunTextureInd);
+    LoadTextureAtInd(TEXTURES_DIRECTORY + "/" + "sun.png", sunTextureInd);
 
     sunSphere = gluNewQuadric();
     
@@ -147,7 +147,7 @@ void InitializeSun()
 void InitializeSkybox()
 {
     glGenTextures(1, &skyboxTextureInd);
-    LoadTextureAtInd(TEXTURES_DIRECTORY + "/" + "stars.tga", skyboxTextureInd);
+    LoadTextureAtInd(TEXTURES_DIRECTORY + "/" + "stars.png", skyboxTextureInd);
 
     skyboxSphere = gluNewQuadric();
 
@@ -295,19 +295,30 @@ void InitializePlanets()
 
     string textureFilenames[planetsCount]
     {
-        TEXTURES_DIRECTORY + "/" + "mercury.tga",
-        TEXTURES_DIRECTORY + "/" + "venus.tga",
-        TEXTURES_DIRECTORY + "/" + "earth.tga",
-        TEXTURES_DIRECTORY + "/" + "mars.tga",
-        TEXTURES_DIRECTORY + "/" + "jupiter.tga",
-        TEXTURES_DIRECTORY + "/" + "saturn.tga",
-        TEXTURES_DIRECTORY + "/" + "uranus.tga",
-        TEXTURES_DIRECTORY + "/" + "neptune.tga"
+        TEXTURES_DIRECTORY + "/" + "mercury.png",
+        TEXTURES_DIRECTORY + "/" + "venus.png",
+        TEXTURES_DIRECTORY + "/" + "earth.png",
+        TEXTURES_DIRECTORY + "/" + "mars.png",
+        TEXTURES_DIRECTORY + "/" + "jupiter.png",
+        TEXTURES_DIRECTORY + "/" + "saturn.png",
+        TEXTURES_DIRECTORY + "/" + "uranus.png",
+        TEXTURES_DIRECTORY + "/" + "neptune.png"
     };
 
     //Za³adowanie tekstur
     for (int i = 0; i < planetsCount; i++)
-        LoadTextureAtInd(textureFilenames[i], textureIndices[i]);
+    {
+        try
+        {
+            LoadTextureAtInd(textureFilenames[i], textureIndices[i]);
+        }
+        catch (exception e)
+        {
+            cout << e.what() << endl;
+        }
+    }
+    
+    
 
     planets =
     {

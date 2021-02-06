@@ -36,7 +36,7 @@ Orbit::Orbit()
 Point3 Orbit::GetPointOnOrbit(float progress)
 {
     float c = sqrt(aEllipse * aEllipse - bEllipse * bEllipse);
-
+ 
     glm::vec4 position
     {
         aEllipse * cosf(progress / period * 2 * M_PI) + c,
