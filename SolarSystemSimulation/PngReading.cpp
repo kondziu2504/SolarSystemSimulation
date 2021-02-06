@@ -97,6 +97,8 @@ GLbyte* readPng(const char* filename, GLint& imWidth, GLint& imHeight, GLint& im
     
     png_read_end(png_ptr, NULL);
 
+    png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
+
     delete[] row_pointers;
     return (GLbyte*)image_data;
 }
