@@ -38,10 +38,6 @@ Point3 Planet::GetPointOnOrbit(float progress)
     return orbit.GetPointOnOrbit(progress + timeOffset);
 }
 
-std::vector<Point3> Planet::GetPointsOnOrbit()
-{
-    return orbit.GetPointsOnOrbit();
-}
 
 float Planet::GetRadius()
 {
@@ -59,12 +55,10 @@ void Planet::Draw(float time)
 
     Point3 position = GetPointOnOrbit(time);
 
-#pragma region MyRegion
     float rotationProgress = time;
     while (rotationProgress >= rotationPeriod)
         rotationProgress -= rotationPeriod;
     rotationProgress /= rotationPeriod;
-#pragma endregion
   
     glTranslatef(position.x, position.y, position.z);
     //Rotacja planety wokó³ osi
@@ -73,14 +67,13 @@ void Planet::Draw(float time)
     glRotatef(-90, 1, 0, 0);
 
     glBindTexture(GL_TEXTURE_2D, textureIndex);
-    gluSphere(sphere, radius, 32, 16);
+    gluSphere(sphere, radius, 64, 32);
 
     glPopMatrix(); //Wczytanie pierwotnego stanu
 
+
     glPushMatrix(); //Zapisanie pierwotnego stanu
-
     orbit.Draw();    
-
     glPopMatrix(); //Wczytanie pierwotnego stanu
 }
 

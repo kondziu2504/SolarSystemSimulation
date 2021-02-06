@@ -16,11 +16,11 @@ LightSource::LightSource(Point4 ambient, Point4 diffuse, Point4 specular)
 	glLightfv(GL_LIGHT0 + lightIndex, GL_SPECULAR, specular);
 	glLightfv(GL_LIGHT0 + lightIndex, GL_POSITION, Point4{ 0.0, 0.0, 0.0, 1.0 });
 
-	GLfloat att_constant = { 1.0 };
+	GLfloat att_constant = { 0.0 };
 	// sk³adowa sta³a ds dla modelu zmian oœwietlenia w funkcji
 	// odleg³oœci od Ÿród³a
 
-	GLfloat att_linear = { 0.05 };
+	GLfloat att_linear = { 0.0 };
 	// sk³adowa liniowa dl dla modelu zmian oœwietlenia w funkcji
 	// odleg³oœci od Ÿród³a
 

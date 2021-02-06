@@ -9,7 +9,7 @@
 #include "Point.h"
 
 const float CAMERA_MOVE_SENSITIVITY = 100;
-const float CAMERA_ZOOM_SENSITIVITY = 30;
+const float CAMERA_ZOOM_SENSITIVITY = 50;
 const float CAMERA_DAMPING = 15;
 
 TargetCamera::TargetCamera(float radius, float minRadius)

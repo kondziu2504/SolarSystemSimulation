@@ -22,7 +22,6 @@ public:
 	int GetTexIndex();
 
 	Point3 GetPointOnOrbit(float progress);
-	std::vector<Point3> GetPointsOnOrbit();
 	float GetRadius();
 	Point3 GetOrbitColor();
 	void Draw(float progress);

@@ -17,6 +17,8 @@ Orbit::Orbit(float aspectRatio, float scale, float period, Point3 orbitAngles, P
 	this->period = period;
 	this->orbitAngles = orbitAngles;
 	this->orbitColor = orbitColor;
+    
+    orbitPoints = GetPointsOnOrbit();
 }
 
 Orbit::Orbit()
@@ -69,7 +71,7 @@ float Orbit::GetPeriod()
 std::vector<Point3> Orbit::GetPointsOnOrbit()
 {
     std::vector<Point3> orbitPoints;
-    int resolution = 100;
+    int resolution = 300;
     for (int i = 0; i < resolution; i++)
     {
         orbitPoints.push_back(GetPointOnOrbit((float)i / resolution * period));
@@ -79,11 +81,9 @@ std::vector<Point3> Orbit::GetPointsOnOrbit()
 
 void Orbit::Draw()
 {
-    std::vector<Point3> orbitPoints = GetPointsOnOrbit();
-
     glDisable(GL_TEXTURE_2D);
     glDisable(GL_LIGHTING);
-    //Obniøenie przeüroczystoúci w celu, aby kolory orbit nie dominowa≥y na ekranie
+    //Obniøenie przeüroczystoúci, aby kolory orbit nie dominowa≥y na ekranie
     glColor4f(orbitColor.x, orbitColor.y, orbitColor.z, 0.5f);
 
     glBegin(GL_LINE_LOOP);

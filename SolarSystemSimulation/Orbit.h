@@ -8,6 +8,9 @@ class Orbit
 	float period;
 	Point3 orbitAngles;
 	Point3 orbitColor;
+	std::vector<Point3> orbitPoints;
+
+	std::vector<Point3> GetPointsOnOrbit();
 
 public:
 	Orbit(float aspectRatio, float scale, float period, Point3 orbitAngles, Point3 orbitColor);
@@ -15,7 +18,7 @@ public:
 	Point3 GetPointOnOrbit(float progress);
 	Point3 GetOrbitColor();
 	float GetPeriod();
-	std::vector<Point3> GetPointsOnOrbit();
+
 	void Draw();
 };
 

@@ -36,10 +36,10 @@ const string TEXTURES_DIRECTORY = "Tekstury";
 const LPCWSTR AUDIO_PATH = L"Muzyka/spaceAmbient.wav";
 
 //Parametry do modyfikacji
-const float TIME_SCALE = 1;
-const float ORBITS_SCALE = 6;
-const float PLANETS_SCALE = 1;
-const float SUN_RADIUS = 4;
+const float TIME_SCALE = 0.5;
+const float ORBITS_SCALE = 5;
+const float PLANETS_SCALE = 0.1;
+const float SUN_RADIUS = 8;
 const float SKYBOX_RADIUS = 500;
 const float SUN_ROTATION_PERIOD = 150;
 //---------------------------
@@ -166,7 +166,7 @@ void DrawSun(float time)
     glBindTexture(GL_TEXTURE_2D, sunTextureInd);
     glDisable(GL_LIGHTING);
     glRotatef(time / SUN_ROTATION_PERIOD * 360, 0, 1, 0);
-    gluSphere(sunSphere, SUN_RADIUS, 32, 16);
+    gluSphere(sunSphere, SUN_RADIUS, 32, 32);
     glEnable(GL_LIGHTING);
 
     glPopMatrix();
@@ -186,7 +186,7 @@ void DrawSkybox()
     
     glTranslatef(cameraPosition.x, cameraPosition.y, cameraPosition.z);
     glRotatef(90, 1, 0, 0);
-    gluSphere(skyboxSphere, SKYBOX_RADIUS, 32, 16);
+    gluSphere(skyboxSphere, SKYBOX_RADIUS, 16, 16);
     
     glEnable(GL_LIGHTING);
 
@@ -205,16 +205,15 @@ void MouseMotionCorrection()
         delta_y /= 2;
 }
 
-std::chrono::steady_clock::time_point frameStart;
-std::chrono::steady_clock::time_point frameEnd;
+
+
+std::chrono::steady_clock::time_point lastFrame = std::chrono::steady_clock::now();
 
 float deltaTime = 0.01;
 float unscaledDeltaTime = 0.01;
 
 void RenderScene(void)
 {
-    frameStart = std::chrono::steady_clock::now();
-
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     //Aktualizacja pozycji kamery
@@ -230,7 +229,7 @@ void RenderScene(void)
     UpdateLight();
 
     DrawSkybox();
-    Axes();
+    //Axes();
     DrawSun(currentTime);
 
     for (Planet planet : planets)
@@ -243,14 +242,17 @@ void RenderScene(void)
     //Zkolejkowanie kolejnego wyœwietlenia sceny, aby zachowaæ aktualnoœæ symulacji na ekranie
     glutPostRedisplay();
 
-    frameEnd = std::chrono::steady_clock::now();
     if (updateTime)
     {
-        unscaledDeltaTime = 0.001 * std::chrono::duration_cast<std::chrono::milliseconds>(frameEnd - frameStart).count();
+        unscaledDeltaTime = 0.001 * std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - lastFrame).count();
         deltaTime = TIME_SCALE * unscaledDeltaTime;
         currentTime += deltaTime;
     }
+
+    lastFrame = std::chrono::steady_clock::now();
 }
+
+
 
 //Funkcja zwrotna do wstrzymania/wznowienia symulacji po nacisnieciu klawisza
 void KeysToggleTimeUpdate(unsigned char key, int x, int y)
@@ -259,9 +261,38 @@ void KeysToggleTimeUpdate(unsigned char key, int x, int y)
         updateTime = !updateTime;
 }
 
+//Funkcja zwrotna do wyboru kamery za pomoc¹ klawiszy
+void KeysCameras(unsigned char key, int x, int y)
+{
+    if (key == '0')
+        currentCamera = sunCamera;
+    else if (key >= '1' && key <= '9')
+    {
+        int index = key - '0' - 1;
+        if(index < planets.size())
+            currentCamera = planetCameras[key - '0' - 1];
+    }
+}
+
+//Funkcja zwrotna do w³¹czania/wy³¹czania muzyki za pomoc¹ klawisza
+void KeysToggleAudio(unsigned char key, int x, int y)
+{
+    if (key == 'm')
+    {
+        if (audioPlaying)
+        {
+            PlaySound(NULL, NULL, SND_ASYNC);
+        }
+        else
+            PlaySound(AUDIO_PATH, NULL, SND_ASYNC | SND_FILENAME | SND_LOOP);
+
+        audioPlaying = !audioPlaying;
+    }    
+}
+
 void InitializeTexturing()
 {
-    glEnable(GL_CULL_FACE);    
+    glEnable(GL_CULL_FACE);
     glEnable(GL_TEXTURE_2D);
 }
 
@@ -317,49 +348,18 @@ void InitializePlanets()
             cout << e.what() << endl;
         }
     }
-    
-    
 
     planets =
     {
-        Planet(0.2 * PLANETS_SCALE, 3, textureIndices[0], Orbit(1.1, 2 * ORBITS_SCALE, 5, Point3{ 1,3,2 }, RED)),  //mercury
-        Planet(0.3 * PLANETS_SCALE, 7, textureIndices[1], Orbit(1.02, 3 * ORBITS_SCALE, 10, Point3{ 6,5,-1 }, GREEN)),    //wenus
-        Planet(0.4 * PLANETS_SCALE, 4, textureIndices[2], Orbit(1.04, 5 * ORBITS_SCALE, 20, Point3{ 0,-3,0 }, WHITE)),    //ziemia
-        Planet(0.5 * PLANETS_SCALE, 5, textureIndices[3], Orbit(1.03, 7 * ORBITS_SCALE, 40, Point3{ 4,0,1 }, BLUE)),    //Mars
-        Planet(0.6 * PLANETS_SCALE, 9, textureIndices[4], Orbit(1.04, 9 * ORBITS_SCALE, 80, Point3{ -5,2,0 }, YELLOW)),    //Jowisz
-        Planet(0.7 * PLANETS_SCALE, 4, textureIndices[5], Orbit(1.05, 11 * ORBITS_SCALE, 160, Point3{ 1,0,-3 }, VIOLET)),    //Saturn
-        Planet(0.8 * PLANETS_SCALE, 10, textureIndices[6], Orbit(1.05, 13 * ORBITS_SCALE, 320, Point3{ 0,1,0 }, CYAN)),    //Uran
-        Planet(0.9 * PLANETS_SCALE, 11, textureIndices[7], Orbit(1.02, 15 * ORBITS_SCALE, 640, Point3{ -3,-2,2 }, ORANGE))    //Neptun
-    }; 
-}
-
-//Funkcja zwrotna do wyboru kamery za pomoc¹ klawiszy
-void KeysCameras(unsigned char key, int x, int y)
-{
-    if (key == '0')
-        currentCamera = sunCamera;
-    else if (key >= '1' && key <= '9')
-    {
-        int index = key - '0' - 1;
-        if(index < planets.size())
-            currentCamera = planetCameras[key - '0' - 1];
-    }
-}
-
-//Funkcja zwrotna do w³¹czania/wy³¹czania muzyki za pomoc¹ klawisza
-void KeysToggleAudio(unsigned char key, int x, int y)
-{
-    if (key == 'm')
-    {
-        if (audioPlaying)
-        {
-            PlaySound(NULL, NULL, SND_ASYNC);
-        }
-        else
-            PlaySound(AUDIO_PATH, NULL, SND_ASYNC | SND_FILENAME | SND_LOOP);
-
-        audioPlaying = !audioPlaying;
-    }    
+        Planet(2.4 * PLANETS_SCALE, 3, textureIndices[0], Orbit(1.08, 9 * ORBITS_SCALE, 5, Point3{ 1, 3, 2 }, RED)),  //mercury
+        Planet(6.1 * PLANETS_SCALE, 7, textureIndices[1], Orbit(1.01, 12 * ORBITS_SCALE, 10, Point3{ 6, 5, -1 }, GREEN)),    //wenus
+        Planet(6.4 * PLANETS_SCALE, 4, textureIndices[2], Orbit(1.03, 15 * ORBITS_SCALE, 20, Point3{ 0, -3, 0 }, WHITE)),    //ziemia
+        Planet(3.4 * PLANETS_SCALE, 5, textureIndices[3], Orbit(1.02, 18 * ORBITS_SCALE, 40, Point3{ 4, 0, 1 }, BLUE)),    //Mars
+        Planet(69.9/3 * PLANETS_SCALE, 9, textureIndices[4], Orbit(1.03, 21 * ORBITS_SCALE, 80, Point3{ -5, 2, 0 }, YELLOW)),    //Jowisz
+        Planet(58.2/3 * PLANETS_SCALE, 4, textureIndices[5], Orbit(1.04, 24 * ORBITS_SCALE, 160, Point3{ 5, 0, -3 }, VIOLET)),    //Saturn
+        Planet(25.4/3 * PLANETS_SCALE, 10, textureIndices[6], Orbit(1.04, 27 * ORBITS_SCALE, 320, Point3{ 0, 20, 3 }, CYAN)),    //Uran
+        Planet(24.6/3 * PLANETS_SCALE, 11, textureIndices[7], Orbit(1.02, 30 * ORBITS_SCALE, 640, Point3{ -3, -40, 2 }, ORANGE))    //Neptun
+    };
 }
 
 //Utworzenie kamery dla ka¿dej planety
@@ -409,7 +409,7 @@ void InitializeWindowsSizeAndPos()
     glutInitWindowSize(screenWidth / 2, screenHeight / 2);
 }
 
-void InitializeLineAntialiasing()
+void EnableLineAntialiasing()
 {
     glEnable(GL_LINE_SMOOTH);
     glHint(GL_LINE_SMOOTH, GL_NICEST);
@@ -441,7 +441,7 @@ void main(void)
 
     glEnable(GL_DEPTH_TEST);
 
-    InitializeLineAntialiasing();
+    EnableLineAntialiasing();
 
     glutMainLoop();
 }
