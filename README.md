@@ -2,7 +2,7 @@
 
 ## Introduction
 
-![Systemview test](./Screenshots/sunview1.png)
+![Systemview test](./Screenshots/sunview3.png)
 
 ## Scope of functionalities
 
