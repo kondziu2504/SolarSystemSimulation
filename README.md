@@ -36,4 +36,4 @@ To compile the project you will need to download and link against libraries GLUT
 
 ## Sources
 * [Textures](https://www.solarsystemscope.com/textures/)
-* [Music -- Christian Bodhi, Voyager Probe - Deep space](https://pixabay.com/music/ambient-voyager-probe-deep-space-559/)
+* [Music  -  Christian Bodhi, Voyager Probe - Deep space](https://pixabay.com/music/ambient-voyager-probe-deep-space-559/)
