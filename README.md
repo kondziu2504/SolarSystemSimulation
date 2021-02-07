@@ -1,3 +1,15 @@
-# Example
+# Solar system simulation
 
-This is example readme
+## Introduction
+
+## Scope of functionalities
+
+## Technologies
+* C++
+* OpenGL ver?
+
+## Launch
+
+## Sources
+
+## Project status
