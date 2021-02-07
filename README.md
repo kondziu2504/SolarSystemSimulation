@@ -35,5 +35,5 @@ to visualize the system is not to scale.
 To compile the project you will need to download and link against libraries GLUT 3.7, Libpng 1.6.37 and Zlib 1.2.11
 
 ## Sources
-[Textures](https://www.solarsystemscope.com/textures/)
-[Music - Christian Bodhi, Voyager Probe - Deep space](https://pixabay.com/music/ambient-voyager-probe-deep-space-559/)
+* [Textures](https://www.solarsystemscope.com/textures/)
+* [Music -- Christian Bodhi, Voyager Probe - Deep space](https://pixabay.com/music/ambient-voyager-probe-deep-space-559/)
