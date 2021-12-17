@@ -6,7 +6,7 @@ This project has been created as an assignment in graphics classes on university
 The projects goal was to create visual simulation of a solar system, meaning there are no physics involved. To keep things simpler and easier 
 to visualize the system is not to scale.
 
-![Systemview test](./Screenshots/sunview3.png)
+[![Systemview test](./Screenshots/thumbnail.png)](https://www.youtube.com/watch?v=zzS7K_zvvvY)
 
 ## Features
 ### Simulation
