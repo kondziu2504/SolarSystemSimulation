@@ -1,5 +1,5 @@
 # Solar system simulation
-Visual simulation of a solar system.
+Visual simulation of a solar system for <em>Windows</em>.
 
 ## Introduction
 This project has been created as an assignment in graphics classes on university with aim to summarize the knowledge gained during the course.
